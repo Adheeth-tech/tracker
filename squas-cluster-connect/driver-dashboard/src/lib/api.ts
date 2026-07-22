@@ -3,7 +3,7 @@ import type {
 } from "./types";
 
 const BASE =
-  process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:8001/api/v1";
+  process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:8000/api/v1";
 
 const TOKEN_KEY = "squas_driver_token";
 
