@@ -139,75 +139,75 @@ The screenshots below trace a single pickup request — from a hotel raising it,
 
 The hotel operator fills out a new pickup request, specifying date, time window, estimated litres, wastewater type, urgency, and any driver access instructions.
 
-![Hotel raises a new pickup request](docs/screenshots/01-hotel-new-pickup-request.png)
+![Hotel raises a new pickup request](https://github.com/Adheeth-tech/tracker/blob/main/squas-cluster-connect/docs/screenshots/01-hotel-new-pickup-request.png)
 
 Once submitted, the request appears in the hotel's own list in the **Requested** state, awaiting admin approval.
 
-![Hotel view of request in Requested state](docs/screenshots/02-hotel-request-requested-status.png)
+![Hotel view of request in Requested state](https://github.com/Adheeth-tech/tracker/blob/main/squas-cluster-connect/docs/screenshots/02-hotel-request-requested-status.png)
 
 ### 2. Admin reviews and approves the request
 
 The request also surfaces on the admin side (Control Room → Requests), where the admin can approve it.
 
-![Admin sees the pending request and approves it](docs/screenshots/03-admin-requests-pending-approval.png)
+![Admin sees the pending request and approves it](https://github.com/Adheeth-tech/tracker/blob/main/squas-cluster-connect/docs/screenshots/03-admin-requests-pending-approval.png)
 
 Once approved, the status updates and an **Assign Tanker** action becomes available.
 
-![Request now shows Approved status with Assign Tanker action](docs/screenshots/04-admin-request-approved.png)
+![Request now shows Approved status with Assign Tanker action](https://github.com/Adheeth-tech/tracker/blob/main/squas-cluster-connect/docs/screenshots/04-admin-request-approved.png)
 
 ### 3. Admin assigns a driver and tanker
 
 The admin dispatches a tanker, either via system auto-assignment or manual selection of an available vehicle and driver.
 
-![Admin dispatch modal for selecting vehicle and driver](docs/screenshots/05-admin-dispatch-tanker-modal.png)
+![Admin dispatch modal for selecting vehicle and driver](https://github.com/Adheeth-tech/tracker/blob/main/squas-cluster-connect/docs/screenshots/05-admin-dispatch-tanker-modal.png)
 
 ### 4. Driver receives and accepts the assignment
 
 The assigned driver sees the new job appear under **Active Jobs**, awaiting their acceptance.
 
-![Driver sees a new job assignment awaiting acceptance](docs/screenshots/06-driver-new-job-awaiting-acceptance.png)
+![Driver sees a new job assignment awaiting acceptance](https://github.com/Adheeth-tech/tracker/blob/main/squas-cluster-connect/docs/screenshots/06-driver-new-job-awaiting-acceptance.png)
 
 After accepting, the driver sees the full job ticket — hotel details, pickup/drop locations, vehicle and load info — and can start the trip.
 
-![Driver accepts the job and starts the trip](docs/screenshots/07-driver-job-accepted-start-trip.png)
+![Driver accepts the job and starts the trip](https://github.com/Adheeth-tech/tracker/blob/main/squas-cluster-connect/docs/screenshots/07-driver-job-accepted-start-trip.png)
 
 ### 5. Driver executes the trip, updating status along the way
 
 As the driver progresses, they advance the trip through each operational stage (e.g. reached hotel, loading started, loading completed) using the Telemetry Status Controls.
 
-![Driver updates trip status via telemetry controls](docs/screenshots/08-driver-telemetry-status-controls.png)
+![Driver updates trip status via telemetry controls](https://github.com/Adheeth-tech/tracker/blob/main/squas-cluster-connect/docs/screenshots/08-driver-telemetry-status-controls.png)
 
 Throughout the trip, both the **admin** and the **hotel owner** can view the driver's live status and current task:
 
 - The admin monitors active trips and can view live telemetry from the Control Room.
 
-  ![Admin monitors live trip status](docs/screenshots/09-admin-trips-live-monitoring.png)
+  ![Admin monitors live trip status](https://github.com/Adheeth-tech/tracker/blob/main/squas-cluster-connect/docs/screenshots/09-admin-trips-live-monitoring.png)
 
 - The hotel owner sees the same trip's operational delivery timeline, with each completed step timestamped.
 
-  ![Hotel view of trip tracking timeline](docs/screenshots/10-hotel-trip-tracking-timeline.png)
+  ![Hotel view of trip tracking timeline](https://github.com/Adheeth-tech/tracker/blob/main/squas-cluster-connect/docs/screenshots/10-hotel-trip-tracking-timeline.png)
 
 ### 6. Driver logs the collected quantity
 
 Just before leaving the hotel, the driver logs the actual collected litres and collection method — this figure feeds directly into billing.
 
-![Driver logs collected volume after loading is completed](docs/screenshots/11-driver-loading-completed-log-volume.png)
+![Driver logs collected volume after loading is completed](https://github.com/Adheeth-tech/tracker/blob/main/squas-cluster-connect/docs/screenshots/11-driver-loading-completed-log-volume.png)
 
 The driver can also record payment details (rate per litre, payment status, and mode) associated with the trip.
 
-![Driver updates billing and payment record](docs/screenshots/12-driver-billing-record-payment.png)
+![Driver updates billing and payment record](https://github.com/Adheeth-tech/tracker/blob/main/squas-cluster-connect/docs/screenshots/12-driver-billing-record-payment.png)
 
 ### 7. Admin generates the invoice
 
 Only the admin can generate the client-facing invoice, consolidating litres cleared and total amount for the hotel over a selected date range.
 
-![Admin generates invoice from pending payments](docs/screenshots/13-admin-generate-invoice.png)
+![Admin generates invoice from pending payments](https://github.com/Adheeth-tech/tracker/blob/main/squas-cluster-connect/docs/screenshots/13-admin-generate-invoice.png)
 
 ### 8. Completion
 
 Once the full cycle is done, the request is marked **Completed** across the system — visible to the admin as the closing state of the workflow.
 
-![Requests marked Completed after full cycle](docs/screenshots/14-admin-requests-completed.png)
+![Requests marked Completed after full cycle](https://github.com/Adheeth-tech/tracker/blob/main/squas-cluster-connect/docs/screenshots/14-admin-requests-completed.png)
 
 ---
 
