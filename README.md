@@ -44,7 +44,7 @@ Open a terminal, navigate to the `backend` folder, set up your virtual environme
 
 ```bash
 # Navigate to backend directory
-cd c:\Users\adhee\tracker\squas-cluster-connect\backend
+cd \tracker\squas-cluster-connect\backend
 
 # Create virtual environment (if not already done)
 python -m venv .venv
