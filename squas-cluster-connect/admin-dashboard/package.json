@@ -1,0 +1,29 @@
+{
+  "name": "squas-admin-dashboard",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Squas Cluster Connect — admin control room (Next.js scaffold)",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "@types/leaflet": "^1.9.21",
+    "leaflet": "^1.9.4",
+    "lucide-react": "^1.24.0",
+    "next": "^14.2.0",
+    "react": "^18.3.0",
+    "react-dom": "^18.3.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "@types/react": "^18",
+    "autoprefixer": "^10.5.2",
+    "postcss": "^8.5.19",
+    "tailwindcss": "^3.4.19",
+    "typescript": "^5"
+  },
+  "//": "Add a map SDK when building the live map: mapbox-gl or @react-google-maps/api."
+}
