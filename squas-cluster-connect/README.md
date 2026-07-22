@@ -2,111 +2,121 @@
 
 **Wastewater Collection, Tracking & Compliance Platform**
 
-A software framework implementing the *Squas Cluster Connect* technical
-specification — a digital operations platform that makes decentralized
-wastewater collection (hotels/institutions → tanker → Squas treatment centre)
-transparent, measurable, trackable, auditable and payment-linked.
+Squas Cluster Connect is a digital operations platform designed to make decentralized wastewater collection (Hotels/Institutions → Tanker → Squas Treatment Centre) transparent, measurable, trackable, auditable, and payment-linked.
 
-This repository is a **framework / scaffold**: a fully working backend that
-implements the domain, the trip workflow engine, role-based access and every
-spec module, plus structured starting points for the admin dashboard and the
-mobile app. It is built to be extended, not to be a finished product.
+This repository implements the backend workflows, databases, and structured frontend dashboard scaffolds for the different roles interacting with the platform.
+
+---
+
+## 🛠️ Components & Architecture
+
+The workspace is organized into a modular structure:
 
 ```
 squas-cluster-connect/
-├── backend/            FastAPI + SQLAlchemy backend (runnable, tested)
-├── admin-dashboard/    Next.js admin control room (scaffold + API client)
-├── mobile-app/         Hotel + Driver app (structure + integration notes)
-└── docs/               Architecture, data model, API guide
+├── backend/            # FastAPI + SQLite/PostgreSQL backend API (runnable, tested)
+├── admin-dashboard/    # Next.js admin control room (port 3000)
+├── hotel-dashboard/    # Next.js hotel operations portal (port 3001)
+├── driver-dashboard/   # Next.js driver fleet portal (port 3002)
+└── docs/               # Architecture, data model, and API reference
 ```
 
-## What's implemented
+---
 
-The backend is complete and runnable. It covers all four roles (Hotel, Driver,
-Admin, Treatment Centre Operator) and the full workflow from spec section 3:
+## ✨ Key Functionalities
 
-> Hotel registers → raises pickup request → admin approves/assigns tanker →
-> driver runs the trip (with GPS) → quantity recorded → payment captured →
-> tanker reaches plant → receipt confirmed → invoice & reports generated.
+1. **Role-Based Access Control (RBAC)**: Supports roles for Admins, Hotels, Drivers, and Treatment Centre Operators via OTP authentication.
+2. **Pickup Workflow Engine**: A comprehensive state-machine to manage the lifecycle of requests and trips:
+   * Hotel raises a request → Admin approves and dispatches a tanker/driver → Driver runs the trip (recording GPS coordinates) → Quantity is recorded → Payment is verified → Tanker drops off at the treatment centre → Treatment operator confirms receipt.
+3. **Admin Control Room Dashboard**: Live map tracking of vehicles, fleet management, request dispatch, hotel approval, payment monitoring, and reports.
+4. **Hotel Portal Dashboard**: Allows hotels to raise pickup requests, view pickup history, download monthly invoices, and update capacity information.
+5. **Driver Portal Dashboard**: Allows drivers to view current trip assignments, log trip execution events (e.g. quantity filled), and navigate routes.
+6. **Billing & Compliance Audit Logs**: End-to-end ledger of quantity verification, invoices, and compliant wastewater disposals.
 
-An end-to-end test (`backend/tests/test_workflow.py`) exercises this entire
-chain and passes.
+---
 
-## Quick start (backend)
+## 🚀 How to Run the Platform
+
+Follow these steps to spin up the backend API and the frontend dashboards:
+
+### 1. Start the Backend API (Port 8000)
+Open a terminal, navigate to the `backend` folder, set up your virtual environment, seed the database, and run the FastAPI server:
 
 ```bash
-cd backend
-python -m venv .venv && source .venv/bin/activate
+# Navigate to backend directory
+cd c:\Users\adhee\tracker\squas-cluster-connect\backend
+
+# Create virtual environment (if not already done)
+python -m venv .venv
+
+# Activate virtual environment
+.venv\Scripts\activate
+
+# Install dependencies
 pip install -r requirements.txt
-cp .env.example .env             # zero-config SQLite by default
-python -m app.seed               # demo admin/hotel/driver/vehicle
+
+# Create .env file from template (uses SQLite by default)
+cp .env.example .env
+
+# Seed the database with demo users/vehicles
+python -m app.seed
+
+# Start the backend server
 uvicorn app.main:app --reload
 ```
+* Once started, access the interactive API Swagger documentation at: **[http://localhost:8000/docs](http://localhost:8000/docs)**.
 
-Open **http://localhost:8000/docs** for interactive API docs.
+---
 
-Log in with OTP (echoed in the response in dev mode):
+### 2. Start the Frontend Dashboards
+Ensure the backend is running first. Open a new, separate terminal for each dashboard you want to start:
 
+#### 💼 Admin Dashboard (Port 3000)
+Used by Squas operators and dispatch managers.
 ```bash
-# request an OTP
-curl -s -X POST localhost:8000/api/v1/auth/otp/request \
-     -H 'content-type: application/json' -d '{"phone":"+919000000001"}'
-# -> {"detail":"OTP sent","dev_otp":"123456"}
-
-# verify to get a bearer token
-curl -s -X POST localhost:8000/api/v1/auth/otp/verify \
-     -H 'content-type: application/json' \
-     -d '{"phone":"+919000000001","code":"123456"}'
+cd c:\Users\adhee\tracker\squas-cluster-connect\admin-dashboard
+npm install   # If running for the first time
+npm run dev
 ```
+* **Link**: [http://localhost:3000](http://localhost:3000)
 
-Run the workflow test:
-
+#### 🏨 Hotel Dashboard (Port 3001)
+Used by hotel managers to request pickups.
 ```bash
-cd backend && python -m tests.test_workflow
+cd c:\Users\adhee\tracker\squas-cluster-connect\hotel-dashboard
+npm install   # If running for the first time
+npm run dev
 ```
+* **Link**: [http://localhost:3001](http://localhost:3001)
 
-## Spec → code map
+#### 🚛 Driver Dashboard (Port 3002)
+Used by tanker drivers to track their assigned route.
+```bash
+cd c:\Users\adhee\tracker\squas-cluster-connect\driver-dashboard
+npm install   # If running for the first time
+npm run dev
+```
+* **Link**: [http://localhost:3002](http://localhost:3002)
 
-| Spec section | Module | Where |
-|---|---|---|
-| 2. User roles | RBAC (Hotel/Driver/Admin/Treatment) | `app/core/enums.py`, `app/api/deps.py` |
-| 3. Core workflow | Trip state machine | `app/workflow/trip_state_machine.py` |
-| 4.1 Hotel registration | Hotels | `app/api/routers/hotels.py` |
-| 4.2 Pickup request | Requests | `app/api/routers/requests.py` |
-| 4.3 Vehicle/driver assignment | Fleet + assignment | `app/api/routers/fleet.py`, `app/services/assignment.py` |
-| 4.4 Live tracking & map | Tracking | `app/api/routers/tracking.py` |
-| 4.5 Trip execution | Trips | `app/api/routers/trips.py` |
-| 4.6 Quantity measurement | Quantity | `app/api/routers/trips.py` (`/quantity`) |
-| 4.7 Payment & billing | Payments | `app/api/routers/payments.py`, `app/services/billing.py` |
-| 4.8 Treatment centre receipt | Treatment | `app/api/routers/treatment.py` |
-| 4.9 Reporting & compliance | Reports | `app/api/routers/reports.py`, `app/services/reports.py` |
-| 5–6 Data entities & fields | ORM models | `app/models/` |
-| 8. Backend architecture | FastAPI app | `app/main.py` |
-| 9. Notifications | Notification service | `app/services/notifications.py` |
-| 10. Security & audit | RBAC + audit log | `app/api/deps.py`, `app/services/audit.py` |
-| 11. MVP scope | — | all of the above |
-| 12. Future enhancements | Hooks left in place | see `docs/architecture.md` |
+---
 
-## Technology choices
+## 🔑 Seeded Demo Credentials (OTP Auth)
 
-Per the spec's recommended architecture:
+When logging in to any of the dashboards, request an OTP for the phone number. In development mode, the OTP is mocked and echoed back in the terminal/network response (defaults to `123456`).
 
-- **Backend:** FastAPI (Python) + SQLAlchemy 2.0
-- **Database:** PostgreSQL in production (SQLite for zero-config local dev)
-- **Auth:** OTP + role-based JWT
-- **Admin dashboard:** Next.js / React
-- **Mobile app:** Flutter or React Native (Hotel + Driver)
-- **Maps:** Google Maps or Mapbox (provider configurable)
-- **Storage:** S3 / GCS for proof photos
-- **Notifications:** FCM / SMS / WhatsApp / email (pluggable drivers)
+| Role | Name | Phone Number | Description |
+|---|---|---|---|
+| **Admin** | Squas Admin | `+919000000001` | Full administrative control & dispatch panel |
+| **Plant Operator** | Plant Operator | `+919000000002` | Treatment centre verification panel |
+| **Hotel Owner** | Anita Menon | `+919000000010` | Registered to *Grand Riverside Hotel* |
+| **Driver** | Rajesh Kumar | `+919000000020` | Tanker driver (Vehicle: `KL-08-AB-1234`) |
 
-See `docs/architecture.md` for the full picture and `docs/data-model.md` for the
-entity relationships.
+---
 
-## Status & next steps
+## ⚙️ Configuration (.env.local)
 
-This is an MVP-scope framework. Production hardening to add:
-Alembic migrations, real notification/storage/payment-gateway integrations,
-PDF/Excel report exporters, WebSocket live-map streaming, and the two frontend
-apps built out against the documented API. These are called out inline as
-`TODO`s and in `docs/architecture.md §Future work`.
+Each dashboard contains a `.env.local` file pointing to the backend API:
+```env
+NEXT_PUBLIC_API_BASE=http://localhost:8000/api/v1
+```
+*If you change the port of the backend, make sure to update `NEXT_PUBLIC_API_BASE` in the `.env.local` files of all dashboards.*
