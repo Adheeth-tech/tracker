@@ -107,7 +107,6 @@ When logging in to any of the dashboards, request an OTP for the phone number. I
 | Role | Name | Phone Number | Description |
 |---|---|---|---|
 | **Admin** | Squas Admin | `+919000000001` | Full administrative control & dispatch panel |
-| **Plant Operator** | Plant Operator | `+919000000002` | Treatment centre verification panel |
 | **Hotel Owner** | Anita Menon | `+919000000010` | Registered to *Grand Riverside Hotel* |
 | **Driver** | Rajesh Kumar | `+919000000020` | Tanker driver (Vehicle: `KL-08-AB-1234`) |
 
