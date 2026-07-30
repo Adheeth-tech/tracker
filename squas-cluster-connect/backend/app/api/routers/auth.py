@@ -40,8 +40,7 @@ def request_otp(payload: OtpRequest, db: Session = Depends(get_db)):
 @router.post("/otp/verify", response_model=Token)
 def verify_otp(payload: OtpVerify, db: Session = Depends(get_db)):
     is_dev_otp = (
-        settings.env == "development"
-        and settings.dev_otp is not None
+        settings.dev_otp is not None
         and payload.code == settings.dev_otp
     )
 
