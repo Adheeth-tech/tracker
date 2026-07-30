@@ -13,7 +13,7 @@ tmp.db
 
 # Env
 .env
-.env.local
+.env.*
 
 # Node / Next.js
 node_modules/

@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from functools import lru_cache
 
+from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -16,33 +17,32 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int = 1440
     algorithm: str = "HS256"
 
-    # Database — SQLite default keeps local dev zero-config; use Postgres in prod.
-    database_url: str = "sqlite:///./squas_new.db"
+    # Database
+    database_url: str | None = None
+    dev_database_url: str = "sqlite:///./squas_new.db"
+    prod_database_url: str = "sqlitecloud://cgshce9edk.g5.sqlite.cloud:8860/auth.sqlitecloud?apikey=uGHiUkUmiYz4b2GrggkebkN1SYawcpiGmvWFVwh6PnQ"
 
     # OTP auth
     otp_dev_echo: bool = True
     otp_ttl_seconds: int = 300
 
-    # Maps
-    maps_provider: str = "google"
-    maps_api_key: str = ""
-
-    # Storage
-    storage_bucket: str = "squas-proofs"
-    storage_base_url: str = ""
-
-    # Notifications
-    fcm_server_key: str = ""
-    sms_api_key: str = ""
-    whatsapp_api_key: str = ""
-
     # Billing
     default_rate_per_litre: float = 0.50
-    currency: str = "INR"
+
+    @model_validator(mode="after")
+    def set_database_url(self) -> Settings:
+        if not self.database_url:
+            if self.env == "production":
+                self.database_url = self.prod_database_url
+            else:
+                self.database_url = self.dev_database_url
+        return self
 
     @property
     def is_sqlite(self) -> bool:
-        return self.database_url.startswith("sqlite")
+        return self.database_url is not None and (
+            self.database_url.startswith("sqlite://") or self.database_url.startswith("sqlite+pysqlite://")
+        )
 
 
 @lru_cache
