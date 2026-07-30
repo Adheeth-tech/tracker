@@ -2,8 +2,16 @@ import type {
   Token, Hotel, PickupRequest, Trip, Payment, Invoice, Notification
 } from "./types";
 
-const BASE =
-  process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:8000/api/v1";
+const getApiBase = () => {
+  let base = process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:8000/api/v1";
+  base = base.replace(/\/$/, "");
+  if (!base.endsWith("/api/v1")) {
+    base = `${base}/api/v1`;
+  }
+  return base;
+};
+
+const BASE = getApiBase();
 
 const TOKEN_KEY = "squas_hotel_token";
 

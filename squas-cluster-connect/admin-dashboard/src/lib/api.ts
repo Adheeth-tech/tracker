@@ -9,8 +9,16 @@ import type {
   Token, Trip, TripStatus, Vehicle, VehiclePosition, Driver
 } from "./types";
 
-const BASE =
-  process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:8000/api/v1";
+const getApiBase = () => {
+  let base = process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:8000/api/v1";
+  base = base.replace(/\/$/, "");
+  if (!base.endsWith("/api/v1")) {
+    base = `${base}/api/v1`;
+  }
+  return base;
+};
+
+const BASE = getApiBase();
 
 const TOKEN_KEY = "squas_token";
 
