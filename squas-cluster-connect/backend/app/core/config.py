@@ -25,6 +25,7 @@ class Settings(BaseSettings):
     # OTP auth
     otp_dev_echo: bool = True
     otp_ttl_seconds: int = 300
+    dev_otp: str | None = "123456"
 
     # Billing
     default_rate_per_litre: float = 0.50

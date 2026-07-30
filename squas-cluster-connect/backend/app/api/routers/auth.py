@@ -33,26 +33,34 @@ def request_otp(payload: OtpRequest, db: Session = Depends(get_db)):
     # In production, dispatch via SMS/WhatsApp instead of echoing.
     return OtpRequestResponse(
         detail="OTP sent",
-        dev_otp=code if settings.otp_dev_echo else None,
+        dev_otp=settings.dev_otp if settings.otp_dev_echo and settings.dev_otp else (code if settings.otp_dev_echo else None),
     )
 
 
 @router.post("/otp/verify", response_model=Token)
 def verify_otp(payload: OtpVerify, db: Session = Depends(get_db)):
-    stmt = (
-        select(OtpCode)
-        .where(OtpCode.phone == payload.phone, OtpCode.consumed.is_(False))
-        .order_by(OtpCode.id.desc())
+    is_dev_otp = (
+        settings.env == "development"
+        and settings.dev_otp is not None
+        and payload.code == settings.dev_otp
     )
-    otp = db.scalars(stmt).first()
-    now = datetime.now(timezone.utc)
-    expires = otp.expires_at if otp else None
-    if expires is not None and expires.tzinfo is None:
-        expires = expires.replace(tzinfo=timezone.utc)
-    if not otp or otp.code != payload.code or expires < now:
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid or expired OTP")
 
-    otp.consumed = True
+    if not is_dev_otp:
+        stmt = (
+            select(OtpCode)
+            .where(OtpCode.phone == payload.phone, OtpCode.consumed.is_(False))
+            .order_by(OtpCode.id.desc())
+        )
+        otp = db.scalars(stmt).first()
+        now = datetime.now(timezone.utc)
+        expires = otp.expires_at if otp else None
+        if expires is not None and expires.tzinfo is None:
+            expires = expires.replace(tzinfo=timezone.utc)
+        if not otp or otp.code != payload.code or expires < now:
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid or expired OTP")
+
+        otp.consumed = True
+
     user = db.scalars(select(User).where(User.phone == payload.phone)).first()
     if not user:
         raise HTTPException(
