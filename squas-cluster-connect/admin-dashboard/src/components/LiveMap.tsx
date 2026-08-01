@@ -12,6 +12,7 @@ interface LiveMapProps {
   selectedVehicleId: number | null;
   onSelectVehicle: (id: number) => void;
   trail: { lat: number; lng: number; speed?: number | null; status: string; ts: string }[] | null;
+  plannedRoute?: { type: string; coordinates: number[][] } | null;
 }
 
 export default function LiveMap({
@@ -20,6 +21,7 @@ export default function LiveMap({
   selectedVehicleId,
   onSelectVehicle,
   trail,
+  plannedRoute,
 }: LiveMapProps) {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
@@ -28,6 +30,7 @@ export default function LiveMap({
   const vehicleLayerGroupRef = useRef<L.LayerGroup | null>(null);
   const hotelLayerGroupRef = useRef<L.LayerGroup | null>(null);
   const trailLayerGroupRef = useRef<L.LayerGroup | null>(null);
+  const routeLayerGroupRef = useRef<L.LayerGroup | null>(null);
 
   // Initialize Map
   useEffect(() => {
@@ -56,6 +59,7 @@ export default function LiveMap({
     vehicleLayerGroupRef.current = L.layerGroup().addTo(map);
     hotelLayerGroupRef.current = L.layerGroup().addTo(map);
     trailLayerGroupRef.current = L.layerGroup().addTo(map);
+    routeLayerGroupRef.current = L.layerGroup().addTo(map);
 
     return () => {
       if (mapRef.current) {
@@ -73,13 +77,15 @@ export default function LiveMap({
     const vehicleGroup = vehicleLayerGroupRef.current;
     const hotelGroup = hotelLayerGroupRef.current;
     const trailGroup = trailLayerGroupRef.current;
+    const routeGroup = routeLayerGroupRef.current;
 
-    if (!vehicleGroup || !hotelGroup || !trailGroup) return;
+    if (!vehicleGroup || !hotelGroup || !trailGroup || !routeGroup) return;
 
     // Clear old markers/polylines
     vehicleGroup.clearLayers();
     hotelGroup.clearLayers();
     trailGroup.clearLayers();
+    routeGroup.clearLayers();
 
     const bounds: L.LatLngExpression[] = [];
 
@@ -192,6 +198,21 @@ export default function LiveMap({
     });
 
     // --- RENDER SELECTED TRIP TRAIL ---
+    if (plannedRoute?.coordinates?.length) {
+      const routeCoords = plannedRoute.coordinates.map(
+        ([lng, lat]) => [lat, lng] as [number, number]
+      );
+      routeGroup.addLayer(L.polyline(routeCoords, {
+        color: "#0ea5e9",
+        weight: 5,
+        opacity: 0.65,
+        dashArray: "10, 10",
+        lineJoin: "round",
+      }));
+      bounds.push(...routeCoords);
+    }
+
+    // --- RENDER SELECTED TRIP TRAIL ---
     if (trail && trail.length > 0) {
       const trailCoords = trail
         .map((t) => [t.lat, t.lng] as [number, number])
@@ -253,7 +274,7 @@ export default function LiveMap({
       // If nothing is selected, fit map bounds to show all markers
       map.fitBounds(L.latLngBounds(bounds), { padding: [50, 50] });
     }
-  }, [positions, hotels, selectedVehicleId, trail]);
+  }, [positions, hotels, selectedVehicleId, trail, plannedRoute]);
 
   return (
     <div

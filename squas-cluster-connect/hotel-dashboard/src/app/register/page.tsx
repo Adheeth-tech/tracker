@@ -71,7 +71,7 @@ export default function RegisterPage() {
               <h2 className="text-2xl font-black text-white">Registration Submitted!</h2>
               <p className="text-slate-400 text-sm leading-relaxed">
                 Your hotel hub <span className="text-white font-semibold">{formData.hotel_name}</span> is registered. 
-                Your account status is currently <span className="text-amber-400 font-bold">PENDING</span> operator verification, but your phone login is active.
+                Your account status is currently <span className="text-amber-400 font-bold">PENDING</span> admin approval. Your phone login is available, but pickup requests remain locked until approval.
               </p>
             </div>
 
@@ -79,7 +79,7 @@ export default function RegisterPage() {
               <p className="font-bold text-indigo-200">Next Steps:</p>
               <p>1. Go to the login screen and enter your phone number (<span className="text-white font-mono">{formData.phone}</span>).</p>
               <p>2. Complete verification using the access code.</p>
-              <p>3. You can set up your tank profile and raise wastewater requests immediately.</p>
+              <p>3. After admin approval, you can log in and raise wastewater pickup requests.</p>
             </div>
 
             <Link

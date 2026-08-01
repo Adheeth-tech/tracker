@@ -15,6 +15,7 @@ export default function RequestsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<string>("");
+  const [hotelStatus, setHotelStatus] = useState<"pending" | "active" | "suspended" | null>(null);
   const [, startTransition] = useTransition();
 
   const loadRequests = async (silent = false) => {
@@ -34,6 +35,15 @@ export default function RequestsPage() {
   useEffect(() => {
     loadRequests();
   }, [statusFilter]);
+
+  useEffect(() => {
+    api.me().then((me) => {
+      if (me.hotel_id) return api.getMyHotel(me.hotel_id);
+      return null;
+    }).then((hotel) => {
+      if (hotel) setHotelStatus(hotel.status);
+    }).catch(() => undefined);
+  }, []);
 
   const columns: Column<PickupRequest>[] = [
     {
@@ -119,15 +129,29 @@ export default function RequestsPage() {
                 Refresh
               </button>
 
-              <Link
-                href="/requests/new"
-                className="inline-flex items-center gap-2 px-4 py-2 border border-transparent rounded-xl text-sm font-bold text-white bg-indigo-650 hover:bg-indigo-750 transition-colors shadow-sm cursor-pointer animate-fade-in"
-              >
-                <Plus className="h-4 w-4" />
-                New Request
-              </Link>
+              {hotelStatus === "active" && (
+                <Link
+                  href="/requests/new"
+                  className="inline-flex items-center gap-2 px-4 py-2 border border-transparent rounded-xl text-sm font-bold text-white bg-indigo-650 hover:bg-indigo-750 transition-colors shadow-sm cursor-pointer animate-fade-in"
+                >
+                  <Plus className="h-4 w-4" />
+                  New Request
+                </Link>
+              )}
             </div>
           </div>
+
+          {hotelStatus === "pending" && (
+            <div className="bg-amber-50 border border-amber-200 text-amber-800 p-4 rounded-xl text-sm font-semibold">
+              Your hotel registration is pending admin approval. Pickup requests will be available after approval.
+            </div>
+          )}
+
+          {hotelStatus === "suspended" && (
+            <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-xl text-sm font-semibold">
+              This hotel account is suspended. Contact an administrator before creating a request.
+            </div>
+          )}
 
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-xl text-sm font-semibold flex items-center gap-3">

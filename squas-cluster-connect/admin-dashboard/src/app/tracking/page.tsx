@@ -1,9 +1,9 @@
 "use client";
 
-import React, { useEffect, useState, useTransition } from "react";
+import React, { useEffect, useRef, useState, useTransition } from "react";
 import dynamic from "next/dynamic";
 import { api } from "../../lib/api";
-import { VehiclePosition, Hotel } from "../../lib/types";
+import { VehiclePosition, Hotel, NavigationRoute } from "../../lib/types";
 import ProtectedRoute from "../../components/ProtectedRoute";
 import AppShell from "../../components/AppShell";
 import DataTable, { Column } from "../../components/DataTable";
@@ -43,6 +43,9 @@ export default function TrackingPage() {
   const [selectedVehicleId, setSelectedVehicleId] = useState<number | null>(null);
   const [trail, setTrail] = useState<{ lat: number; lng: number; speed?: number | null; status: string; ts: string }[] | null>(null);
   const [loadingTrail, setLoadingTrail] = useState(false);
+  const [plannedRoute, setPlannedRoute] = useState<NavigationRoute | null>(null);
+  const routeFetchedAtRef = useRef(0);
+  const routeKeyRef = useRef<string | null>(null);
 
   // Search & Filter state
   const [searchQuery, setSearchQuery] = useState("");
@@ -87,15 +90,39 @@ export default function TrackingPage() {
     }
   };
 
+  const fetchRoute = async (vehicle: VehiclePosition) => {
+    if (!vehicle.trip_id || vehicle.latitude == null || vehicle.longitude == null) {
+      setPlannedRoute(null);
+      routeFetchedAtRef.current = 0;
+      routeKeyRef.current = null;
+      return;
+    }
+    const routeKey = `${vehicle.vehicle_id}:${vehicle.trip_id}:${vehicle.trip_status || ""}`;
+    if (routeKeyRef.current !== routeKey) {
+      routeKeyRef.current = routeKey;
+      routeFetchedAtRef.current = 0;
+      setPlannedRoute(null);
+    }
+    if (Date.now() - routeFetchedAtRef.current < 60000 && plannedRoute) return;
+    try {
+      const route = await api.navigationRoute(vehicle.trip_id, vehicle.latitude, vehicle.longitude);
+      setPlannedRoute(route);
+      routeFetchedAtRef.current = Date.now();
+    } catch (err) {
+      console.warn("Failed to fetch planned route:", err);
+      setPlannedRoute(null);
+    }
+  };
+
   useEffect(() => {
     // Initial fetch
     fetchPositions();
     fetchHotels();
 
-    // Setup polling every 20 seconds
+    // Setup short polling for near-real-time admin tracking.
     const interval = setInterval(() => {
       fetchPositions(true);
-    }, 20000);
+    }, 7500);
 
     return () => clearInterval(interval);
   }, []);
@@ -106,21 +133,34 @@ export default function TrackingPage() {
       const selectedVehicle = positions.find((v) => v.vehicle_id === selectedVehicleId);
       if (selectedVehicle && selectedVehicle.trip_id) {
         fetchTrail(selectedVehicle.trip_id);
+        fetchRoute(selectedVehicle);
       } else {
         setTrail(null);
+        setPlannedRoute(null);
+        routeFetchedAtRef.current = 0;
+        routeKeyRef.current = null;
       }
     } else {
       setTrail(null);
+      setPlannedRoute(null);
+      routeFetchedAtRef.current = 0;
+      routeKeyRef.current = null;
     }
   }, [selectedVehicleId, positions]);
 
   const handleSelectVehicle = (vehicleId: number) => {
+    routeFetchedAtRef.current = 0;
+    routeKeyRef.current = null;
+    setPlannedRoute(null);
     setSelectedVehicleId(vehicleId);
   };
 
   const clearSelection = () => {
     setSelectedVehicleId(null);
     setTrail(null);
+    setPlannedRoute(null);
+    routeFetchedAtRef.current = 0;
+    routeKeyRef.current = null;
   };
 
   // Helper stats for side metrics
@@ -258,6 +298,7 @@ export default function TrackingPage() {
                   selectedVehicleId={selectedVehicleId}
                   onSelectVehicle={handleSelectVehicle}
                   trail={trail}
+                  plannedRoute={plannedRoute?.geometry || null}
                 />
               </div>
 
@@ -334,6 +375,7 @@ export default function TrackingPage() {
                           </div>
                           <div className="flex items-center gap-2">
                             <StatusBadge status={vehicle.status as any} />
+                            {vehicle.stale && <span className="text-[9px] font-bold text-amber-600">STALE</span>}
                           </div>
                         </button>
                       );
@@ -375,6 +417,18 @@ export default function TrackingPage() {
                             {selectedVehicleObj.latitude !== null && selectedVehicleObj.latitude !== undefined
                               ? `${selectedVehicleObj.latitude.toFixed(4)}, ${selectedVehicleObj.longitude?.toFixed(4)}`
                               : "No GPS lock"}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Clock className="h-3.5 w-3.5 text-indigo-300" />
+                        <div>
+                          <p className="text-[9px] text-indigo-300 font-semibold leading-none">Last GPS update</p>
+                          <p className={`mt-0.5 text-[10px] font-bold ${selectedVehicleObj.stale ? "text-amber-300" : "text-white"}`}>
+                            {selectedVehicleObj.last_location_at
+                              ? new Date(selectedVehicleObj.last_location_at).toLocaleTimeString()
+                              : "Never"}
+                            {selectedVehicleObj.stale ? " · Stale" : ""}
                           </p>
                         </div>
                       </div>

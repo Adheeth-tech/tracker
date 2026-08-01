@@ -51,6 +51,7 @@ export interface Vehicle {
   status: "available" | "on_trip" | "maintenance" | "inactive";
   last_lat?: number | null;
   last_lng?: number | null;
+  last_location_at?: string | null;
 }
 
 export interface PickupRequest {
@@ -95,6 +96,30 @@ export interface Trip {
   } | null;
 }
 
+export interface NavigationDestination {
+  type: "hotel" | "plant";
+  name: string;
+  address: string;
+  latitude: number;
+  longitude: number;
+}
+
+export interface NavigationStep {
+  instruction?: string | null;
+  distance_meters?: number | null;
+  duration_seconds?: number | null;
+  maneuver?: string | null;
+  location?: number[] | null;
+}
+
+export interface NavigationRoute {
+  destination: NavigationDestination;
+  distance_meters: number;
+  duration_seconds: number;
+  geometry: { type: string; coordinates: number[][] };
+  steps: NavigationStep[];
+}
+
 export interface VehiclePosition {
   vehicle_id: number;
   vehicle_number: string;
@@ -102,6 +127,9 @@ export interface VehiclePosition {
   longitude?: number | null;
   status: string;
   trip_id?: number | null;
+  trip_status?: string | null;
+  last_location_at?: string | null;
+  stale?: boolean;
 }
 
 export interface Payment {

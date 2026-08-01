@@ -6,7 +6,7 @@
 
 import type {
   Dashboard, Hotel, PaymentMode, PaymentStatus, PickupRequest,
-  Token, Trip, TripStatus, Vehicle, VehiclePosition, Driver
+  Token, Trip, TripStatus, Vehicle, VehiclePosition, Driver, NavigationRoute
 } from "./types";
 
 const getApiBase = () => {
@@ -108,6 +108,10 @@ export const api = {
   liveMap: () => req<VehiclePosition[]>("/tracking/live"),
   tripTrail: (id: number) =>
     req<{ lat: number; lng: number; status: string; ts: string }[]>(`/tracking/trips/${id}`),
+  navigationRoute: (tripId: number, latitude: number, longitude: number) =>
+    req<NavigationRoute>(
+      `/navigation/trips/${tripId}/route?origin_lat=${encodeURIComponent(latitude)}&origin_lng=${encodeURIComponent(longitude)}`
+    ),
 
   // ---- payments ----
   pendingPayments: () => req<unknown[]>("/payments/pending"),

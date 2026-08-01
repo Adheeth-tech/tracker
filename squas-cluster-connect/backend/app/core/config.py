@@ -30,6 +30,15 @@ class Settings(BaseSettings):
     # Billing
     default_rate_per_litre: float = 0.50
 
+    # Navigation / tracking
+    mapbox_access_token: str | None = None
+    mapbox_profile: str = "mapbox/driving"
+    plant_name: str = "Central Wastewater Treatment Plant"
+    plant_address: str = "Treatment Centre, Thrissur, Kerala"
+    plant_latitude: float | None = None
+    plant_longitude: float | None = None
+    tracking_stale_after_seconds: int = 60
+
     @model_validator(mode="after")
     def set_database_url(self) -> Settings:
         if not self.database_url:

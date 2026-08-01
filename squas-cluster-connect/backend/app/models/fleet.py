@@ -1,9 +1,9 @@
 """Driver and Vehicle entities — spec 4.3 and section 6 field lists."""
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime
 
-from sqlalchemy import Date, Enum as SAEnum, Float, ForeignKey, String
+from sqlalchemy import Date, DateTime, Enum as SAEnum, Float, ForeignKey, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
@@ -47,6 +47,7 @@ class Vehicle(Base, TimestampMixin):
     # last known position for the live map (spec 4.4)
     last_lat: Mapped[float | None] = mapped_column(Float)
     last_lng: Mapped[float | None] = mapped_column(Float)
+    last_location_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     driver_id: Mapped[int | None] = mapped_column(ForeignKey("drivers.id"))
     driver: Mapped["Driver | None"] = relationship(back_populates="vehicle")

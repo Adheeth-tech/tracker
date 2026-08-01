@@ -9,8 +9,9 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user, require_roles
 from app.core.database import get_db
-from app.core.enums import DriverStatus, RequestStatus, Role, TripStatus, VehicleStatus
+from app.core.enums import DriverStatus, HotelStatus, RequestStatus, Role, TripStatus, VehicleStatus
 from app.models.fleet import Driver, Vehicle
+from app.models.hotel import Hotel
 from app.models.pickup_request import PickupRequest
 from app.models.trip import Trip
 from app.models.user import User
@@ -38,6 +39,14 @@ def create_request(
     hotel_id = payload.hotel_id
     if user.role == Role.HOTEL:
         hotel_id = user.hotel_id
+        if not hotel_id:
+            raise HTTPException(status.HTTP_403_FORBIDDEN, "Hotel account is not linked to a hotel")
+        hotel = db.get(Hotel, hotel_id)
+        if not hotel or hotel.status != HotelStatus.ACTIVE:
+            raise HTTPException(
+                status.HTTP_403_FORBIDDEN,
+                "Hotel registration is pending admin approval",
+            )
     if not hotel_id:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "hotel_id required")
 

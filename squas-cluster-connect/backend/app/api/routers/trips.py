@@ -123,6 +123,7 @@ def advance_trip(
         if trip.vehicle:
             trip.vehicle.last_lat = payload.location.latitude
             trip.vehicle.last_lng = payload.location.longitude
+            trip.vehicle.last_location_at = now
 
     audit.record(db, action="trip_status_change", entity_type="trip", entity_id=trip.id,
                  actor_user_id=user.id, actor_role=user.role.value,

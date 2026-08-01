@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime
 
 from pydantic import BaseModel
 
@@ -60,4 +60,5 @@ class VehicleOut(VehicleCreate):
     status: VehicleStatus
     last_lat: float | None = None
     last_lng: float | None = None
+    last_location_at: datetime | None = None
     model_config = {"from_attributes": True}

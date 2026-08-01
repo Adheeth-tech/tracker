@@ -114,7 +114,34 @@ class VehiclePosition(BaseModel):
     longitude: float | None
     status: str
     trip_id: int | None = None
+    trip_status: str | None = None
+    last_location_at: datetime | None = None
+    stale: bool = False
     model_config = {"from_attributes": True}
+
+
+class NavigationDestination(BaseModel):
+    type: str
+    name: str
+    address: str
+    latitude: float
+    longitude: float
+
+
+class NavigationStep(BaseModel):
+    instruction: str | None = None
+    distance_meters: float | None = None
+    duration_seconds: float | None = None
+    maneuver: str | None = None
+    location: list[float] | None = None
+
+
+class NavigationRouteOut(BaseModel):
+    destination: NavigationDestination
+    distance_meters: float
+    duration_seconds: float
+    geometry: dict
+    steps: list[NavigationStep]
 
 
 # ---------- Quantity ----------

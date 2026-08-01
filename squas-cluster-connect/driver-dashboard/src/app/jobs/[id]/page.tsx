@@ -9,6 +9,7 @@ import ProtectedRoute from "../../../components/ProtectedRoute";
 import AppShell from "../../../components/AppShell";
 import StatusBadge from "../../../components/StatusBadge";
 import LocationInput from "../../../components/LocationInput";
+import NavigationPanel from "../../../components/NavigationPanel";
 import {
   ArrowLeft,
   RefreshCw,
@@ -57,13 +58,8 @@ export default function JobDetailPage() {
   // Tracking state and refs for fallback pinging
   const [lastLat, setLastLat] = useState("");
   const [lastLng, setLastLng] = useState("");
-  const latRef = useRef(latitude);
-  const lngRef = useRef(longitude);
-
-  useEffect(() => {
-    latRef.current = latitude;
-    lngRef.current = longitude;
-  }, [latitude, longitude]);
+  const latRef = useRef("");
+  const lngRef = useRef("");
 
   // Background live location tracking loop
   useEffect(() => {
@@ -97,6 +93,8 @@ export default function JobDetailPage() {
         watchId = navigator.geolocation.watchPosition(
           (pos) => {
             const { latitude: lt, longitude: lg, speed: sp } = pos.coords;
+            latRef.current = lt.toString();
+            lngRef.current = lg.toString();
             setLastLat(lt.toString());
             setLastLng(lg.toString());
             ping(lt, lg, sp);
@@ -108,12 +106,14 @@ export default function JobDetailPage() {
         );
       }
 
-      // 2. Fallback periodic ping (every 15s) using last-known coordinates
+      // 2. Fallback periodic ping (every 10s) using the last confirmed coordinates.
       intervalId = setInterval(() => {
-        const currentLat = parseFloat(latRef.current || lastLat || "10.5280");
-        const currentLng = parseFloat(lngRef.current || lastLng || "76.2160");
-        ping(currentLat, currentLng);
-      }, 15000);
+        const currentLat = parseFloat(latRef.current);
+        const currentLng = parseFloat(lngRef.current);
+        if (Number.isFinite(currentLat) && Number.isFinite(currentLng)) {
+          ping(currentLat, currentLng);
+        }
+      }, 10000);
     }
 
     return () => {
@@ -122,7 +122,7 @@ export default function JobDetailPage() {
         navigator.geolocation.clearWatch(watchId);
       }
     };
-  }, [trip?.status, trip?.id, lastLat, lastLng]);
+  }, [trip?.status, trip?.id]);
 
   const loadData = async (silent = false) => {
     try {
@@ -377,6 +377,9 @@ export default function JobDetailPage() {
                       )}
                     </div>
                   </div>
+
+                  {/* Trip State Advancement Panel */}
+                  <NavigationPanel trip={trip} latitude={lastLat} longitude={lastLng} />
 
                   {/* Trip State Advancement Panel */}
                   <div className="bg-white border border-gray-150 rounded-2xl p-6 shadow-sm space-y-5">

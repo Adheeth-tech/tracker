@@ -17,6 +17,7 @@ from app.api.routers import (
     fleet,
     hotels,
     payments,
+    navigation,
     reports,
     requests,
     tracking,
@@ -47,7 +48,7 @@ app.add_middleware(
 )
 
 API = "/api/v1"
-for r in (auth, hotels, fleet, requests, trips, tracking, payments, treatment, reports):
+for r in (auth, hotels, fleet, requests, trips, tracking, navigation, payments, treatment, reports):
     app.include_router(r.router, prefix=API)
 
 
@@ -64,6 +65,6 @@ def root():
         "api_base": API,
         "modules": [
             "auth", "hotels", "fleet", "requests", "trips",
-            "tracking", "payments", "treatment", "reports",
+            "tracking", "navigation", "payments", "treatment", "reports",
         ],
     }

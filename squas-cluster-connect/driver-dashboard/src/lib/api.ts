@@ -1,5 +1,5 @@
 import type {
-  Token, Trip, Payment, Notification
+  Token, Trip, Payment, Notification, NavigationRoute
 } from "./types";
 
 const getApiBase = () => {
@@ -106,6 +106,11 @@ export const api = {
 
   pingLocation: (tripId: number, latitude: number, longitude: number, speed?: number | null) =>
     req<void>(`/tracking/trips/${tripId}/ping`, "POST", { latitude, longitude, speed }),
+
+  getNavigationRoute: (tripId: number, latitude: number, longitude: number) =>
+    req<NavigationRoute>(
+      `/navigation/trips/${tripId}/route?origin_lat=${encodeURIComponent(latitude)}&origin_lng=${encodeURIComponent(longitude)}`
+    ),
 
   // ---- notifications ----
   listNotifications: (unreadOnly = false) =>

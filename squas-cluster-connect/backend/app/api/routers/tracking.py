@@ -5,7 +5,7 @@ sees every active vehicle on the live map.
 """
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user, require_roles
 from app.core.database import get_db
+from app.core.config import settings
 from app.core.enums import Role, TripStatus
 from app.models.fleet import Vehicle
 from app.models.trip import LocationLog, Trip
@@ -45,6 +46,7 @@ def push_ping(
     if trip.vehicle:
         trip.vehicle.last_lat = ping.latitude
         trip.vehicle.last_lng = ping.longitude
+        trip.vehicle.last_location_at = now
     db.commit()
 
 
@@ -82,6 +84,7 @@ def live_map(
 ):
     """All vehicles' last-known positions for the admin control-room map."""
     vehicles = db.scalars(select(Vehicle))
+    stale_before = datetime.now(timezone.utc) - timedelta(seconds=settings.tracking_stale_after_seconds)
     out: list[VehiclePosition] = []
     for v in vehicles:
         active = db.scalars(
@@ -94,5 +97,8 @@ def live_map(
             vehicle_id=v.id, vehicle_number=v.vehicle_number,
             latitude=v.last_lat, longitude=v.last_lng,
             status=v.status.value, trip_id=active.id if active else None,
+            trip_status=active.status.value if active else None,
+            last_location_at=v.last_location_at,
+            stale=not v.last_location_at or v.last_location_at < stale_before,
         ))
     return out

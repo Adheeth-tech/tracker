@@ -12,6 +12,7 @@ from app.models.hotel import Hotel
 from app.models.user import User
 from app.schemas.entities import HotelCreate, HotelOut
 from app.services import audit
+from app.services.notifications import notify_role
 
 router = APIRouter(prefix="/hotels", tags=["hotels"])
 
@@ -19,21 +20,28 @@ router = APIRouter(prefix="/hotels", tags=["hotels"])
 @router.post("", response_model=HotelOut, status_code=status.HTTP_201_CREATED)
 def register_hotel(payload: HotelCreate, db: Session = Depends(get_db)):
     """Open registration; hotel starts as PENDING until admin approval."""
+    if payload.phone:
+        existing_user = db.scalars(select(User).where(User.phone == payload.phone)).first()
+        if existing_user:
+            raise HTTPException(
+                status.HTTP_409_CONFLICT,
+                "A user account already exists for this phone number",
+            )
+
     hotel = Hotel(**payload.model_dump(), status=HotelStatus.PENDING)
     db.add(hotel)
     db.flush()
     
     if payload.phone:
-        existing_user = db.scalars(select(User).where(User.phone == payload.phone)).first()
-        if not existing_user:
-            db.add(User(
-                phone=payload.phone,
-                name=payload.contact_person or payload.hotel_name,
-                role=Role.HOTEL,
-                hotel_id=hotel.id
-            ))
+        db.add(User(
+            phone=payload.phone,
+            name=payload.contact_person or payload.hotel_name,
+            role=Role.HOTEL,
+            hotel_id=hotel.id
+        ))
             
     audit.record(db, action="hotel_registered", entity_type="hotel", entity_id=hotel.id)
+    notify_role(db, Role.ADMIN, event="hotel_registered")
     db.commit()
     db.refresh(hotel)
     return hotel
