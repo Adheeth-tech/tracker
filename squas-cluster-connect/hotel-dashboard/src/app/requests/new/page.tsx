@@ -6,9 +6,21 @@ import Link from "next/link";
 import { api } from "../../../lib/api";
 import ProtectedRoute from "../../../components/ProtectedRoute";
 import AppShell from "../../../components/AppShell";
+import { useToast } from "../../../components/Toast";
 import { ArrowLeft, Send, RefreshCw, AlertCircle } from "lucide-react";
 
+const PICKUP_TIME_SLOTS = [
+  "06:00-08:00",
+  "08:00-10:00",
+  "10:00-12:00",
+  "12:00-14:00",
+  "14:00-16:00",
+  "16:00-18:00",
+  "18:00-20:00",
+];
+
 export default function NewRequestPage() {
+  const { showToast } = useToast();
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -39,9 +51,11 @@ export default function NewRequestPage() {
 
     try {
       await api.createRequest(formData);
+      showToast("Pickup request submitted successfully.", "success");
       router.push("/requests");
     } catch (err: any) {
       console.error(err);
+      showToast(err.message || "Failed to create pickup request.", "error");
       setErrorMsg(err.message || "Failed to create request. Please check inputs.");
     } finally {
       setLoading(false);
@@ -94,15 +108,15 @@ export default function NewRequestPage() {
                 <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">
                   Preferred Time Window *
                 </label>
-                <input
-                  type="text"
+                <select
                   name="time_window"
                   required
-                  placeholder="e.g. 08:00-10:00"
                   value={formData.time_window}
                   onChange={handleChange}
-                  className="block w-full px-3.5 py-2.5 bg-slate-50 border border-gray-200 rounded-xl text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-650 font-mono font-semibold"
-                />
+                  className="block w-full px-3.5 py-2.5 bg-slate-50 border border-gray-200 rounded-xl text-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-650 font-mono font-semibold"
+                >
+                  {PICKUP_TIME_SLOTS.map((slot) => <option key={slot} value={slot}>{slot}</option>)}
+                </select>
               </div>
 
               <div>

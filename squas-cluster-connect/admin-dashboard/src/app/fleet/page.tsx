@@ -5,11 +5,13 @@ import { api } from "../../lib/api";
 import { Vehicle, Driver } from "../../lib/types";
 import ProtectedRoute from "../../components/ProtectedRoute";
 import AppShell from "../../components/AppShell";
+import { useToast } from "../../components/Toast";
 import DataTable, { Column } from "../../components/DataTable";
 import StatusBadge from "../../components/StatusBadge";
-import { Plus, RefreshCw, AlertCircle, PlusCircle } from "lucide-react";
+import { Plus, RefreshCw, AlertCircle, PlusCircle, Pencil, Power, UserPlus, Trash2 } from "lucide-react";
 
 export default function FleetPage() {
+  const { showToast } = useToast();
   const [activeTab, setActiveTab] = useState<"vehicles" | "drivers">("vehicles");
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [drivers, setDrivers] = useState<Driver[]>([]);
@@ -19,6 +21,8 @@ export default function FleetPage() {
   // Modals status
   const [showVehicleModal, setShowVehicleModal] = useState(false);
   const [showDriverModal, setShowDriverModal] = useState(false);
+  const [editingVehicleId, setEditingVehicleId] = useState<number | null>(null);
+  const [editingDriverId, setEditingDriverId] = useState<number | null>(null);
 
   // Form states
   const [vehNum, setVehNum] = useState("");
@@ -29,6 +33,16 @@ export default function FleetPage() {
   const [drvLicense, setDrvLicense] = useState("");
 
   const [submitting, setSubmitting] = useState(false);
+
+  const formatVehicleNumber = (value: string) => {
+    const compact = value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 10);
+    return [
+      compact.slice(0, 2),
+      compact.slice(2, 4),
+      compact.slice(4, 6),
+      compact.slice(6, 10),
+    ].filter(Boolean).join("-");
+  };
 
   const fetchData = async () => {
     try {
@@ -58,19 +72,24 @@ export default function FleetPage() {
     setSubmitting(true);
     try {
       const driver_id = vehDriverId ? parseInt(vehDriverId) : null;
-      await api.createVehicle({
+      const payload = {
         vehicle_number: vehNum,
         capacity_litres: parseFloat(vehCap),
         driver_id,
-      });
+      };
+      if (editingVehicleId) await api.updateVehicle(editingVehicleId, payload);
+      else await api.createVehicle(payload);
       // Reset & Refresh
       setVehNum("");
       setVehCap("");
       setVehDriverId("");
+      setEditingVehicleId(null);
       setShowVehicleModal(false);
       await fetchData();
+      showToast(editingVehicleId ? "Vehicle updated successfully." : "Vehicle added successfully.", "success");
     } catch (err: any) {
       console.error(err);
+      showToast(err.message || "Failed to save vehicle.", "error");
       setError(err.message || "Failed to add vehicle.");
     } finally {
       setSubmitting(false);
@@ -82,22 +101,77 @@ export default function FleetPage() {
     setError(null);
     setSubmitting(true);
     try {
-      await api.createDriver({
+      const payload = {
         name: drvName,
         phone: drvPhone,
         license_number: drvLicense || undefined,
-      });
+      };
+      if (editingDriverId) await api.updateDriver(editingDriverId, payload);
+      else await api.createDriver(payload);
       // Reset & Refresh
       setDrvName("");
       setDrvPhone("");
       setDrvLicense("");
+      setEditingDriverId(null);
       setShowDriverModal(false);
       await fetchData();
+      showToast(editingDriverId ? "Driver updated successfully." : "Driver added successfully.", "success");
     } catch (err: any) {
       console.error(err);
+      showToast(err.message || "Failed to save driver.", "error");
       setError(err.message || "Failed to add driver.");
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const toggleVehicle = async (vehicle: Vehicle) => {
+    if (!confirm(`${vehicle.status === "inactive" ? "Activate" : "Deactivate"} ${vehicle.vehicle_number}?`)) return;
+    try {
+      if (vehicle.status === "inactive") await api.activateVehicle(vehicle.id);
+      else await api.deactivateVehicle(vehicle.id);
+      await fetchData();
+      showToast(`${vehicle.vehicle_number} status updated.`, "success");
+    } catch (err: any) {
+      showToast(err.message || "Failed to change vehicle status.", "error");
+      setError(err.message || "Failed to change vehicle status.");
+    }
+  };
+
+  const toggleDriver = async (driver: Driver) => {
+    if (!confirm(`${driver.is_active ? "Deactivate" : "Activate"} ${driver.name}?`)) return;
+    try {
+      if (driver.is_active) await api.deactivateDriver(driver.id);
+      else await api.activateDriver(driver.id);
+      await fetchData();
+      showToast(`${driver.name} status updated.`, "success");
+    } catch (err: any) {
+      showToast(err.message || "Failed to change driver status.", "error");
+      setError(err.message || "Failed to change driver status.");
+    }
+  };
+
+  const deleteVehicle = async (vehicle: Vehicle) => {
+    if (!confirm(`Permanently delete ${vehicle.vehicle_number}? This is only possible when it has no trip or GPS history.`)) return;
+    try {
+      await api.deleteVehicle(vehicle.id);
+      await fetchData();
+      showToast(`${vehicle.vehicle_number} deleted.`, "success");
+    } catch (err: any) {
+      showToast(err.message || "Failed to delete vehicle.", "error");
+      setError(err.message || "Failed to delete vehicle.");
+    }
+  };
+
+  const deleteDriver = async (driver: Driver) => {
+    if (!confirm(`Permanently delete ${driver.name}? Drivers with history must be suspended instead.`)) return;
+    try {
+      await api.deleteDriver(driver.id);
+      await fetchData();
+      showToast(`${driver.name} deleted.`, "success");
+    } catch (err: any) {
+      showToast(err.message || "Failed to delete driver.", "error");
+      setError(err.message || "Failed to delete driver.");
     }
   };
 
@@ -141,6 +215,47 @@ export default function FleetPage() {
         return "None";
       },
       className: "text-xs font-mono text-slate-500",
+    },
+    {
+      header: "Actions",
+      accessor: (item) => (
+        <div className="flex items-center gap-2">
+          <button
+            title="Edit vehicle"
+            onClick={() => {
+              setEditingVehicleId(item.id);
+              setVehNum(item.vehicle_number);
+              setVehCap(String(item.capacity_litres));
+              setVehDriverId(item.driver_id ? String(item.driver_id) : "");
+              setShowVehicleModal(true);
+            }}
+            className="p-1.5 rounded-lg text-indigo-600 hover:bg-indigo-50 cursor-pointer"
+          ><Pencil className="h-3.5 w-3.5" /></button>
+          {!item.driver_id && item.status === "available" && (
+            <button
+              title="Assign driver"
+              onClick={() => {
+                setEditingVehicleId(item.id);
+                setVehNum(item.vehicle_number);
+                setVehCap(String(item.capacity_litres));
+                setVehDriverId("");
+                setShowVehicleModal(true);
+              }}
+              className="inline-flex items-center gap-1 rounded-lg bg-indigo-50 px-2 py-1 text-[10px] font-bold text-indigo-700 hover:bg-indigo-100 cursor-pointer"
+            ><UserPlus className="h-3 w-3" /> Assign Driver</button>
+          )}
+          <button
+            title={item.status === "inactive" ? "Activate vehicle" : "Deactivate vehicle"}
+            onClick={() => toggleVehicle(item)}
+            className={`p-1.5 rounded-lg cursor-pointer ${item.status === "inactive" ? "text-emerald-600 hover:bg-emerald-50" : "text-amber-600 hover:bg-amber-50"}`}
+          ><Power className="h-3.5 w-3.5" /></button>
+          <button
+            title="Delete vehicle"
+            onClick={() => deleteVehicle(item)}
+            className="p-1.5 rounded-lg text-red-600 hover:bg-red-50 cursor-pointer"
+          ><Trash2 className="h-3.5 w-3.5" /></button>
+        </div>
+      ),
     },
   ];
 
@@ -198,7 +313,7 @@ export default function FleetPage() {
       accessor: (item) =>
         item.status === "pending" ? (
           <button
-            onClick={async () => {
+              onClick={async () => {
               if (confirm(`Approve driver ${item.name}?`)) {
                 try {
                   await api.approveDriver(item.id);
@@ -213,6 +328,36 @@ export default function FleetPage() {
             Approve
           </button>
         ) : null,
+    },
+    {
+      header: "Manage",
+      accessor: (item) => (
+        <div className="flex items-center gap-2">
+          <button
+            title="Edit driver"
+            onClick={() => {
+              setEditingDriverId(item.id);
+              setDrvName(item.name);
+              setDrvPhone(item.phone);
+              setDrvLicense(item.license_number || "");
+              setShowDriverModal(true);
+            }}
+            className="p-1.5 rounded-lg text-indigo-600 hover:bg-indigo-50 cursor-pointer"
+          ><Pencil className="h-3.5 w-3.5" /></button>
+          {item.status !== "pending" && (
+            <button
+              title={item.is_active ? "Suspend driver" : "Reactivate driver"}
+              onClick={() => toggleDriver(item)}
+              className={`p-1.5 rounded-lg cursor-pointer ${item.is_active ? "text-amber-600 hover:bg-amber-50" : "text-emerald-600 hover:bg-emerald-50"}`}
+            ><Power className="h-3.5 w-3.5" /></button>
+          )}
+          <button
+            title="Delete driver"
+            onClick={() => deleteDriver(item)}
+            className="p-1.5 rounded-lg text-red-600 hover:bg-red-50 cursor-pointer"
+          ><Trash2 className="h-3.5 w-3.5" /></button>
+        </div>
+      ),
     },
   ];
 
@@ -254,9 +399,16 @@ export default function FleetPage() {
                 Refresh
               </button>
               <button
-                onClick={() => {
-                  if (activeTab === "vehicles") setShowVehicleModal(true);
-                  else setShowDriverModal(true);
+              onClick={() => {
+                  if (activeTab === "vehicles") {
+                    setEditingVehicleId(null);
+                    setVehNum(""); setVehCap(""); setVehDriverId("");
+                    setShowVehicleModal(true);
+                  } else {
+                    setEditingDriverId(null);
+                    setDrvName(""); setDrvPhone(""); setDrvLicense("");
+                    setShowDriverModal(true);
+                  }
                 }}
                 className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-650 hover:bg-indigo-750 text-white rounded-xl text-sm font-bold shadow-sm transition-colors cursor-pointer"
               >
@@ -304,7 +456,7 @@ export default function FleetPage() {
               <div className="bg-white rounded-2xl border border-gray-150 max-w-md w-full shadow-2xl p-6 relative">
                 <h3 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
                   <PlusCircle className="h-5 w-5 text-indigo-600" />
-                  Add Vehicle to Fleet
+                  {editingVehicleId ? "Edit Vehicle" : "Add Vehicle to Fleet"}
                 </h3>
                 <form onSubmit={handleAddVehicle} className="space-y-4">
                   <div>
@@ -316,7 +468,7 @@ export default function FleetPage() {
                       required
                       placeholder="KL-07-CD-1234"
                       value={vehNum}
-                      onChange={(e) => setVehNum(e.target.value)}
+                      onChange={(e) => setVehNum(formatVehicleNumber(e.target.value))}
                       className="block w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:border-indigo-600 text-sm font-semibold"
                     />
                   </div>
@@ -364,7 +516,7 @@ export default function FleetPage() {
                       disabled={submitting}
                       className="px-4 py-2 text-sm font-bold text-white bg-indigo-650 hover:bg-indigo-750 rounded-xl shadow-sm transition-colors disabled:opacity-50 cursor-pointer"
                     >
-                      {submitting ? "Adding..." : "Add Vehicle"}
+                      {submitting ? "Saving..." : editingVehicleId ? "Save Changes" : "Add Vehicle"}
                     </button>
                   </div>
                 </form>
@@ -378,7 +530,7 @@ export default function FleetPage() {
               <div className="bg-white rounded-2xl border border-gray-150 max-w-md w-full shadow-2xl p-6 relative">
                 <h3 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
                   <PlusCircle className="h-5 w-5 text-indigo-600" />
-                  Register Driver
+                  {editingDriverId ? "Edit Driver" : "Register Driver"}
                 </h3>
                 <form onSubmit={handleAddDriver} className="space-y-4">
                   <div>
@@ -433,7 +585,7 @@ export default function FleetPage() {
                       disabled={submitting}
                       className="px-4 py-2 text-sm font-bold text-white bg-indigo-650 hover:bg-indigo-750 rounded-xl shadow-sm transition-colors disabled:opacity-50 cursor-pointer"
                     >
-                      {submitting ? "Adding..." : "Register"}
+                      {submitting ? "Saving..." : editingDriverId ? "Save Changes" : "Register"}
                     </button>
                   </div>
                 </form>

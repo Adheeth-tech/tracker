@@ -33,6 +33,7 @@ def available_vehicles(db: Session) -> list[Vehicle]:
             Vehicle.status == VehicleStatus.AVAILABLE,
             Vehicle.driver_id.is_not(None),
             Driver.status == DriverStatus.ACTIVE,
+            Driver.is_active.is_(True),
         )
     )
     return list(db.scalars(stmt))

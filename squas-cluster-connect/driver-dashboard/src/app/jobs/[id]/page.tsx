@@ -7,6 +7,7 @@ import { api } from "../../../lib/api";
 import { Trip, Payment } from "../../../lib/types";
 import ProtectedRoute from "../../../components/ProtectedRoute";
 import AppShell from "../../../components/AppShell";
+import { useToast } from "../../../components/Toast";
 import StatusBadge from "../../../components/StatusBadge";
 import LocationInput from "../../../components/LocationInput";
 import NavigationPanel from "../../../components/NavigationPanel";
@@ -24,6 +25,7 @@ import {
 } from "lucide-react";
 
 export default function JobDetailPage() {
+  const { showToast } = useToast();
   const params = useParams();
   const router = useRouter();
   const tripId = parseInt(params.id as string);
@@ -53,7 +55,7 @@ export default function JobDetailPage() {
   const [payStatus, setPayStatus] = useState<string>("unpaid");
   const [transId, setTransId] = useState<string>("");
   const [ratePerLitre, setRatePerLitre] = useState<string>("");
-  const [paySuccess, setPaySuccess] = useState(false);
+  const [paymentSubmitted, setPaymentSubmitted] = useState(false);
 
   // Tracking state and refs for fallback pinging
   const [lastLat, setLastLat] = useState("");
@@ -166,10 +168,11 @@ export default function JobDetailPage() {
     setActionLoading(true);
     try {
       await api.acceptTrip(id);
+      showToast("Job assignment accepted.", "success");
       await loadData(true);
     } catch (err: any) {
       console.error(err);
-      alert(err.message || "Failed to accept trip assignment.");
+      showToast(err.message || "Failed to accept trip assignment.", "error");
     } finally {
       setActionLoading(false);
     }
@@ -180,10 +183,11 @@ export default function JobDetailPage() {
     setActionLoading(true);
     try {
       await api.declineTrip(id);
+      showToast("Job assignment declined.", "info");
       router.replace("/jobs");
     } catch (err: any) {
       console.error(err);
-      alert(err.message || "Failed to decline trip assignment.");
+      showToast(err.message || "Failed to decline trip assignment.", "error");
     } finally {
       setActionLoading(false);
     }
@@ -219,12 +223,14 @@ export default function JobDetailPage() {
       await loadData(true);
 
       if (targetState === "closed") {
-        alert("Trip completed successfully!");
+        showToast("Trip completed successfully.", "success");
         router.push("/jobs");
+      } else {
+        showToast(`${formatStateLabel(targetState)} confirmed.`, "success");
       }
     } catch (err: any) {
       console.error(err);
-      alert(err.message || "Failed to advance trip state.");
+      showToast(err.message || "Failed to advance trip state.", "error");
     } finally {
       setActionLoading(false);
     }
@@ -246,12 +252,13 @@ export default function JobDetailPage() {
         photoUrl || undefined
       );
       setQuantitySuccess(true);
+      showToast("Collected quantity submitted.", "success");
       
       // Reload page data
       await loadData(true);
     } catch (err: any) {
       console.error(err);
-      alert(err.message || "Failed to record quantity.");
+      showToast(err.message || "Failed to record quantity.", "error");
     } finally {
       setActionLoading(false);
     }
@@ -260,7 +267,6 @@ export default function JobDetailPage() {
   const handleUpdatePayment = async (e: React.FormEvent) => {
     e.preventDefault();
     setActionLoading(true);
-    setPaySuccess(false);
     try {
       const updated = await api.updatePayment(tripId, {
         payment_mode: payMode,
@@ -269,11 +275,11 @@ export default function JobDetailPage() {
         rate_per_litre: ratePerLitre ? parseFloat(ratePerLitre) : undefined,
       });
       setPayment(updated);
-      setPaySuccess(true);
-      setTimeout(() => setPaySuccess(false), 5000);
+      setPaymentSubmitted(true);
+      showToast("Payment details submitted for admin review.", "success");
     } catch (err: any) {
       console.error(err);
-      alert(err.message || "Failed to update payment details.");
+      showToast(err.message || "Failed to update payment details.", "error");
     } finally {
       setActionLoading(false);
     }
@@ -282,6 +288,17 @@ export default function JobDetailPage() {
   // Format status enum to driver readable label
   const formatStateLabel = (state: string) => {
     return state.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+  };
+
+  const actionLabel: Record<string, string> = {
+    reached_hotel: "Mark Arrived at Hotel",
+    collection_started: "Start Collection",
+    collection_completed: "Complete Collection",
+    moving_to_plant: "Start Delivery to Plant",
+    reached_plant: "Mark Reached Treatment Plant",
+    unloaded: "Confirm Wastewater Unloaded",
+    closed: "End Trip",
+    cancelled: "Cancel Trip",
   };
 
   return (
@@ -438,7 +455,7 @@ export default function JobDetailPage() {
                         </p>
                         
                         {selectedTargetState === "driver_started" ? (
-                          <form onSubmit={handleAdvanceState} className="space-y-4">
+                          <form onSubmit={handleAdvanceState} className="hidden">
                             <div className="bg-indigo-50/50 border border-indigo-100 p-3.5 rounded-xl text-xs text-indigo-850 font-semibold">
                               Confirming journey start to hotel.
                             </div>
@@ -487,7 +504,7 @@ export default function JobDetailPage() {
                           Wastewater has been successfully unloaded at the treatment plant. Click below to end this trip.
                         </p>
                         {selectedTargetState === "closed" ? (
-                          <form onSubmit={handleAdvanceState} className="space-y-4">
+                          <form onSubmit={handleAdvanceState} className="hidden">
                             <div className="bg-indigo-50/50 border border-indigo-100 p-3.5 rounded-xl text-xs text-indigo-850 font-semibold">
                               Confirming trip closure. Live tracking will terminate.
                             </div>
@@ -529,26 +546,35 @@ export default function JobDetailPage() {
                       </div>
                     ) : (
                       <div className="space-y-4">
-                        <span className="text-xs text-gray-400 font-bold block mb-1">Select Next Status Action:</span>
-                        <div className="flex flex-wrap gap-2.5">
-                          {allowedStates.map((state) => (
-                            <button
-                              key={state}
-                              type="button"
-                              onClick={() => setSelectedTargetState(state)}
-                              className={`px-4 py-2.5 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
-                                selectedTargetState === state
-                                  ? "bg-indigo-650 text-white border-indigo-650 shadow-md shadow-indigo-600/20"
-                                  : "bg-white border-gray-250 hover:bg-gray-50 text-gray-700"
-                              }`}
-                            >
-                              Advance to: {formatStateLabel(state)}
-                            </button>
-                          ))}
-                        </div>
+                        {(() => {
+                          const nextState = allowedStates.find((state) => state !== "cancelled");
+                          const canCancel = allowedStates.includes("cancelled");
+                          if (!nextState) return null;
+                          return (
+                            <div className="space-y-2.5">
+                              <span className="text-xs text-gray-400 font-bold block mb-1">Next required step:</span>
+                              <button
+                                type="button"
+                                onClick={() => setSelectedTargetState(nextState)}
+                                className="w-full px-4 py-3 rounded-xl bg-indigo-650 hover:bg-indigo-750 text-white text-sm font-bold transition-all cursor-pointer shadow-md"
+                              >
+                                {actionLabel[nextState] || formatStateLabel(nextState)}
+                              </button>
+                              {canCancel && (
+                                <button
+                                  type="button"
+                                  onClick={() => setSelectedTargetState("cancelled")}
+                                  className="w-full px-4 py-2 rounded-xl border border-red-200 bg-white hover:bg-red-50 text-red-650 text-xs font-bold transition-all cursor-pointer"
+                                >
+                                  Cancel Trip
+                                </button>
+                              )}
+                            </div>
+                          );
+                        })()}
 
                         {selectedTargetState && (
-                          <form onSubmit={handleAdvanceState} className="mt-4 pt-4 border-t border-gray-100 space-y-4">
+                          <form onSubmit={handleAdvanceState} className="hidden">
                             <div className="bg-indigo-50/50 border border-indigo-100 p-3.5 rounded-xl text-xs text-indigo-850 font-semibold flex items-start gap-2">
                               <span className="h-1.5 w-1.5 rounded-full bg-indigo-600 mt-1.5 shrink-0"></span>
                               <span>
@@ -557,14 +583,16 @@ export default function JobDetailPage() {
                               </span>
                             </div>
 
-                            <LocationInput
-                              latitude={latitude}
-                              longitude={longitude}
-                              onChange={(lat, lng) => {
-                                setLatitude(lat);
-                                setLongitude(lng);
-                              }}
-                            />
+                            {selectedTargetState !== "cancelled" && (
+                              <LocationInput
+                                latitude={latitude}
+                                longitude={longitude}
+                                onChange={(lat, lng) => {
+                                  setLatitude(lat);
+                                  setLongitude(lng);
+                                }}
+                              />
+                            )}
 
                             <div className="flex gap-3">
                               <button
@@ -582,7 +610,7 @@ export default function JobDetailPage() {
                                 {actionLoading ? (
                                   <RefreshCw className="h-3.5 w-3.5 animate-spin" />
                                 ) : (
-                                  "Confirm Transition"
+                                  selectedTargetState === "cancelled" ? "Confirm Cancel Trip" : "Confirm Transition"
                                 )}
                               </button>
                             </div>
@@ -677,18 +705,18 @@ export default function JobDetailPage() {
                   </div>
 
                   {/* Editable Billing Summary */}
-                  {payment && (
+                  {paymentSubmitted && (
+                    <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 p-4 rounded-2xl text-xs font-semibold">
+                      Payment details submitted. The billing record is now with Admin for review and approval.
+                    </div>
+                  )}
+
+                  {payment && payment.payment_status !== "paid" && !paymentSubmitted && (
                     <div className="bg-slate-900 text-white p-5 rounded-2xl shadow-sm space-y-4">
                       <div className="flex items-center gap-2 border-b border-slate-800 pb-3">
                         <FolderLock className="h-4.5 w-4.5 text-indigo-450" />
                         <h4 className="text-sm font-bold">Billing Record</h4>
                       </div>
-
-                      {paySuccess && (
-                        <div className="bg-emerald-950 border border-emerald-800 text-emerald-300 p-2.5 rounded-lg text-xs font-semibold">
-                          Payment details updated successfully.
-                        </div>
-                      )}
 
                       <div className="space-y-3.5 text-xs font-semibold">
                         <div className="flex justify-between items-center">
@@ -730,7 +758,6 @@ export default function JobDetailPage() {
                           >
                             <option value="unpaid">Unpaid</option>
                             <option value="partial">Partial</option>
-                            <option value="paid">Paid</option>
                           </select>
                         </div>
 
@@ -783,6 +810,36 @@ export default function JobDetailPage() {
 
               </div>
             )
+          )}
+
+          {trip && selectedTargetState && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-sm">
+              <form onSubmit={handleAdvanceState} className="w-full max-w-lg space-y-5 rounded-2xl border border-slate-700 bg-white p-6 shadow-2xl">
+                <div className="flex items-start justify-between gap-4 border-b border-gray-100 pb-4">
+                  <div>
+                    <p className="text-[10px] font-black uppercase tracking-widest text-indigo-600">Confirm trip step</p>
+                    <h3 className="mt-1 text-lg font-black text-slate-900">{formatStateLabel(selectedTargetState)}</h3>
+                    <p className="mt-1 text-xs font-medium text-slate-500">Confirm this update only after you have completed the step shown.</p>
+                  </div>
+                  <button type="button" onClick={() => setSelectedTargetState(null)} className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700" aria-label="Close confirmation"><X className="h-4 w-4" /></button>
+                </div>
+
+                {selectedTargetState !== "cancelled" && selectedTargetState !== "closed" && (
+                  <LocationInput
+                    latitude={latitude}
+                    longitude={longitude}
+                    onChange={(lat, lng) => { setLatitude(lat); setLongitude(lng); }}
+                  />
+                )}
+
+                <div className="flex gap-3">
+                  <button type="button" onClick={() => setSelectedTargetState(null)} className="flex-1 rounded-xl border border-gray-200 px-4 py-3 text-xs font-bold text-gray-700 hover:bg-gray-50">Cancel</button>
+                  <button type="submit" disabled={actionLoading} className={`flex-1 rounded-xl px-4 py-3 text-xs font-bold text-white shadow-md disabled:opacity-50 ${selectedTargetState === "cancelled" ? "bg-red-600 hover:bg-red-700" : "bg-indigo-600 hover:bg-indigo-700"}`}>
+                    {actionLoading ? <RefreshCw className="mx-auto h-4 w-4 animate-spin" /> : selectedTargetState === "cancelled" ? "Confirm Cancellation" : "Confirm Step"}
+                  </button>
+                </div>
+              </form>
+            </div>
           )}
         </div>
       </AppShell>

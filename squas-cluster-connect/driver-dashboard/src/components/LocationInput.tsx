@@ -35,7 +35,7 @@ export default function LocationInput({
       },
       (error) => {
         console.warn("Geolocation access denied:", error);
-        setLocError("Location access denied or unavailable. Please type manually.");
+        setLocError("Location access denied or unavailable. Enable browser location to attach the current position.");
         setLocLoading(false);
       },
       { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
@@ -67,34 +67,11 @@ export default function LocationInput({
         </div>
       )}
 
-      <div className="grid grid-cols-2 gap-3.5">
-        <div>
-          <label className="block text-[9px] text-gray-400 font-bold uppercase tracking-wider mb-1">
-            Latitude
-          </label>
-          <input
-            type="number"
-            step="0.000001"
-            placeholder="e.g. 10.528"
-            value={latitude}
-            onChange={(e) => onChange(e.target.value, longitude)}
-            className="block w-full px-2.5 py-2.5 bg-white border border-gray-200 rounded-lg text-slate-900 font-mono font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500/20 text-xs"
-          />
-        </div>
-        <div>
-          <label className="block text-[9px] text-gray-400 font-bold uppercase tracking-wider mb-1">
-            Longitude
-          </label>
-          <input
-            type="number"
-            step="0.000001"
-            placeholder="e.g. 76.215"
-            value={longitude}
-            onChange={(e) => onChange(latitude, e.target.value)}
-            className="block w-full px-2.5 py-2.5 bg-white border border-gray-200 rounded-lg text-slate-900 font-mono font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500/20 text-xs"
-          />
-        </div>
-      </div>
+      <p className="text-[10px] text-slate-500">
+        {latitude && longitude
+          ? "Current device location captured and ready to submit."
+          : "Location is captured automatically from this device; no coordinate entry is required."}
+      </p>
     </div>
   );
 }

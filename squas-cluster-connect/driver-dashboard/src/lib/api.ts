@@ -1,4 +1,5 @@
 import type {
+  Driver,
   Token, Trip, Payment, Notification, NavigationRoute
 } from "./types";
 
@@ -66,7 +67,7 @@ export const api = {
   registerDriver: (payload: { name: string; phone: string; license_number?: string }) =>
     req<any>("/fleet/drivers/register", "POST", payload),
 
-  getDriver: (id: number) => req<any>(`/fleet/drivers/${id}`),
+  getDriver: (id: number) => req<Driver>(`/fleet/drivers/${id}`),
 
   // ---- trips ----
   listMyTrips: (onlyActive = false) =>

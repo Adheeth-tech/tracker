@@ -11,7 +11,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session, joinedload
 
-from app.api.deps import get_current_user, require_roles
+from app.api.deps import ensure_active_driver, get_current_user, require_roles
 from app.core.database import get_db
 from app.core.enums import RequestStatus, Role, TripStatus, VehicleStatus
 from app.models.trip import LocationLog, QuantityRecord, Trip
@@ -32,6 +32,7 @@ def _load_trip_for_driver(db: Session, trip_id: int, user: User) -> Trip:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Trip not found")
     if user.role == Role.DRIVER and trip.driver_id != user.driver_id:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Not your trip")
+    ensure_active_driver(user)
     return trip
 
 
@@ -41,6 +42,7 @@ def list_trips(
     user: User = Depends(get_current_user),
     only_active: bool = False,
 ):
+    ensure_active_driver(user)
     stmt = (
         select(Trip)
         .options(
@@ -79,11 +81,13 @@ def _load_trip_detail(db: Session, trip_id: int) -> Trip:
 
 @router.get("/{trip_id}", response_model=TripOut)
 def get_trip(trip_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    ensure_active_driver(user)
     return _load_trip_detail(db, trip_id)
 
 
 @router.get("/{trip_id}/next-states")
 def next_states(trip_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    ensure_active_driver(user)
     trip = db.get(Trip, trip_id)
     if not trip:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Trip not found")
@@ -187,6 +191,7 @@ def record_quantity(
 
     if user.role == Role.DRIVER and trip.driver_id != user.driver_id:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Not your trip")
+    ensure_active_driver(user)
 
     rec = trip.quantity or QuantityRecord(trip_id=trip.id)
     if rec.estimated_litres is None and trip.request:

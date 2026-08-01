@@ -36,10 +36,10 @@ export default function LiveMap({
   useEffect(() => {
     if (!mapContainerRef.current || mapRef.current) return;
 
-    // Create Leaflet map centered at Thrissur, Kerala by default
+    // Start globally until live positions or hotel locations are available.
     const map = L.map(mapContainerRef.current, {
-      center: [10.528, 76.215],
-      zoom: 13,
+      center: [20, 0],
+      zoom: 2,
       zoomControl: false, // will add in bottom-right for clean UI
     });
 

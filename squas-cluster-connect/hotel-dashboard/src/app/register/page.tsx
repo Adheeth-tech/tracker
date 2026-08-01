@@ -4,13 +4,17 @@ import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { api } from "../../lib/api";
-import { Droplet, ArrowLeft, Send, CheckCircle, RefreshCw } from "lucide-react";
+import LocationPicker from "../../components/LocationPicker";
+import { Droplet, ArrowLeft, Send, CheckCircle, RefreshCw, MapPin, Navigation, AlertCircle } from "lucide-react";
 
 export default function RegisterPage() {
   const router = useRouter();
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [locationLoading, setLocationLoading] = useState(false);
+  const [locationError, setLocationError] = useState<string | null>(null);
+  const [showLocationPicker, setShowLocationPicker] = useState(false);
 
   // Form State
   const [formData, setFormData] = useState({
@@ -19,8 +23,8 @@ export default function RegisterPage() {
     phone: "",
     email: "",
     address: "",
-    latitude: 10.528,
-    longitude: 76.215,
+    latitude: null as number | null,
+    longitude: null as number | null,
     gst_number: "",
     tank_location: "",
     tank_capacity: 5000,
@@ -39,9 +43,37 @@ export default function RegisterPage() {
     }));
   };
 
+  const captureLocation = () => {
+    if (!navigator.geolocation) {
+      setLocationError("This browser does not support location access.");
+      return;
+    }
+    setLocationLoading(true);
+    setLocationError(null);
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setFormData((prev) => ({
+          ...prev,
+          latitude: Number(position.coords.latitude.toFixed(6)),
+          longitude: Number(position.coords.longitude.toFixed(6)),
+        }));
+        setLocationLoading(false);
+      },
+      () => {
+        setLocationError("Location access was denied or unavailable. Enable location access and try again.");
+        setLocationLoading(false);
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 },
+    );
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg(null);
+    if (formData.latitude === null || formData.longitude === null) {
+      setErrorMsg("Capture the hotel location before submitting the registration.");
+      return;
+    }
     setLoading(true);
 
     try {
@@ -317,34 +349,43 @@ export default function RegisterPage() {
                   </select>
                 </div>
 
-                <div>
-                  <label className="block text-[10px] font-bold text-slate-350 uppercase tracking-wider mb-1.5">
-                    Latitude Coordinates *
-                  </label>
-                  <input
-                    type="number"
-                    step="0.000001"
-                    name="latitude"
-                    required
-                    value={formData.latitude}
-                    onChange={handleChange}
-                    className="block w-full px-3 py-2 bg-slate-950/70 border border-slate-800 rounded-xl text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-650 focus:border-indigo-650 text-xs font-semibold transition-all font-mono"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-[10px] font-bold text-slate-350 uppercase tracking-wider mb-1.5">
-                    Longitude Coordinates *
-                  </label>
-                  <input
-                    type="number"
-                    step="0.000001"
-                    name="longitude"
-                    required
-                    value={formData.longitude}
-                    onChange={handleChange}
-                    className="block w-full px-3 py-2 bg-slate-950/70 border border-slate-800 rounded-xl text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-650 focus:border-indigo-650 text-xs font-semibold transition-all font-mono"
-                  />
+                <div className="md:col-span-2 rounded-xl border border-slate-800 bg-slate-950/60 p-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-350 uppercase tracking-wider mb-1.5">
+                        Hotel Location *
+                      </label>
+                      <p className="text-[10px] text-slate-500">Use your device location or search and select the hotel on the map. No coordinate entry is required.</p>
+                    </div>
+                    <div className="flex shrink-0 flex-wrap justify-end gap-2">
+                      <button
+                        type="button"
+                        onClick={captureLocation}
+                        disabled={locationLoading}
+                        className="inline-flex items-center gap-1.5 rounded-lg border border-indigo-500/50 bg-indigo-950/50 px-3 py-2 text-[10px] font-bold text-indigo-200 hover:bg-indigo-900/60 disabled:opacity-50"
+                      >
+                        <Navigation className="h-3.5 w-3.5" />
+                        {locationLoading ? "Locating..." : "Use Current Location"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { setLocationError(null); setShowLocationPicker(true); }}
+                        className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3 py-2 text-[10px] font-bold text-white hover:bg-indigo-700"
+                      >
+                        <MapPin className="h-3.5 w-3.5" /> Pick on Map
+                      </button>
+                    </div>
+                  </div>
+                  {formData.latitude !== null && formData.longitude !== null && (
+                    <div className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-emerald-950/60 px-2.5 py-1.5 text-[10px] font-semibold text-emerald-300">
+                      <MapPin className="h-3.5 w-3.5" /> Location selected and ready
+                    </div>
+                  )}
+                  {locationError && (
+                    <div className="mt-3 flex items-start gap-1.5 rounded-lg border border-amber-800/60 bg-amber-950/30 p-2.5 text-[10px] font-semibold text-amber-300">
+                      <AlertCircle className="h-3.5 w-3.5 shrink-0" /> {locationError}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -366,6 +407,22 @@ export default function RegisterPage() {
           </form>
         </div>
       </div>
+      {showLocationPicker && (
+        <LocationPicker
+          latitude={formData.latitude}
+          longitude={formData.longitude}
+          onSelect={(latitude, longitude, address) => {
+            setFormData((prev) => ({
+              ...prev,
+              latitude: Number(latitude.toFixed(6)),
+              longitude: Number(longitude.toFixed(6)),
+              ...(address ? { address } : {}),
+            }));
+            setLocationError(null);
+          }}
+          onClose={() => setShowLocationPicker(false)}
+        />
+      )}
     </div>
   );
 }

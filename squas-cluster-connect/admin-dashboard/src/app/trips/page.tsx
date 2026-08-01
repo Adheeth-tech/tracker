@@ -23,8 +23,6 @@ export default function TripsPage() {
   const [selectedTrip, setSelectedTrip] = useState<Trip | null>(null);
   const [allowedNext, setAllowedNext] = useState<string[]>([]);
   const [targetState, setTargetState] = useState("");
-  const [lat, setLat] = useState("10.53");
-  const [lng, setLng] = useState("76.21");
 
   // Quantity Form State
   const [driverLitres, setDriverLitres] = useState("");
@@ -83,15 +81,9 @@ export default function TripsPage() {
     setError(null);
     setModalLoading(true);
     try {
-      const location = {
-        latitude: parseFloat(lat),
-        longitude: parseFloat(lng),
-      };
-      
       const updatedTrip = await api.advanceTrip(
         selectedTrip.id,
         targetState as TripStatus,
-        location
       );
 
       // Reload lists and details
@@ -374,27 +366,9 @@ export default function TripsPage() {
                           </div>
                         </div>
 
-                        {/* GPS Location Simulation */}
-                        <div className="grid grid-cols-2 gap-2">
-                          <div>
-                            <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block mb-1">Latitude</label>
-                            <input
-                              type="text"
-                              value={lat}
-                              onChange={(e) => setLat(e.target.value)}
-                              className="w-full px-3 py-1.5 border border-gray-200 rounded-lg text-xs font-semibold font-mono"
-                            />
-                          </div>
-                          <div>
-                            <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block mb-1">Longitude</label>
-                            <input
-                              type="text"
-                              value={lng}
-                              onChange={(e) => setLng(e.target.value)}
-                              className="w-full px-3 py-1.5 border border-gray-200 rounded-lg text-xs font-semibold font-mono"
-                            />
-                          </div>
-                        </div>
+                        <p className="text-[10px] text-gray-500">
+                          Admin status changes do not create GPS points. Location telemetry is captured from the driver device.
+                        </p>
 
                         <button
                           type="submit"

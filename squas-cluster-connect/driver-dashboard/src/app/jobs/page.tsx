@@ -6,11 +6,13 @@ import { api } from "../../lib/api";
 import { Trip } from "../../lib/types";
 import ProtectedRoute from "../../components/ProtectedRoute";
 import AppShell from "../../components/AppShell";
+import { useToast } from "../../components/Toast";
 import DataTable, { Column } from "../../components/DataTable";
 import StatusBadge from "../../components/StatusBadge";
 import { AlertCircle, RefreshCw, PlayCircle, Check, X } from "lucide-react";
 
 export default function JobsPage() {
+  const { showToast } = useToast();
   const [trips, setTrips] = useState<Trip[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
@@ -38,10 +40,11 @@ export default function JobsPage() {
     setActionLoading(true);
     try {
       await api.acceptTrip(tripId);
+      showToast("Job assignment accepted.", "success");
       await loadJobs(true);
     } catch (err: any) {
       console.error(err);
-      alert(err.message || "Failed to accept trip assignment.");
+      showToast(err.message || "Failed to accept trip assignment.", "error");
     } finally {
       setActionLoading(false);
     }
@@ -52,10 +55,11 @@ export default function JobsPage() {
     setActionLoading(true);
     try {
       await api.declineTrip(tripId);
+      showToast("Job assignment declined.", "info");
       await loadJobs(true);
     } catch (err: any) {
       console.error(err);
-      alert(err.message || "Failed to decline trip assignment.");
+      showToast(err.message || "Failed to decline trip assignment.", "error");
     } finally {
       setActionLoading(false);
     }

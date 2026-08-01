@@ -43,6 +43,15 @@ export interface Hotel {
   status: "pending" | "active" | "suspended";
 }
 
+export interface Driver {
+  id: number;
+  name: string;
+  phone: string;
+  license_number?: string | null;
+  is_active: boolean;
+  status: "pending" | "active" | "suspended";
+}
+
 export interface Vehicle {
   id: number;
   vehicle_number: string;

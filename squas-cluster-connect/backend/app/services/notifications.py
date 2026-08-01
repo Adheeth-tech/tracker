@@ -32,6 +32,9 @@ _EVENT_COPY: dict[str, tuple[str, str]] = {
     "trip_completed": ("Trip completed", "Your pickup trip is complete."),
     "job_offer": ("New job assigned", "You have a new pickup assignment awaiting your acceptance."),
     "hotel_registered": ("New hotel registration", "A new hotel is waiting for admin approval."),
+    "driver_registered": ("New driver registration", "A new driver is waiting for admin approval."),
+    "assignment_reassigned": ("Assignment changed", "Your tanker assignment has been changed by the operations team."),
+    "request_reassigned": ("Tanker assignment changed", "The tanker assigned to your pickup request has changed."),
     "driver_accepted": ("Driver accepted the job", "The assigned driver has accepted this pickup."),
     "driver_declined": ("Driver declined the job", "The assigned driver declined — please reassign."),
 }

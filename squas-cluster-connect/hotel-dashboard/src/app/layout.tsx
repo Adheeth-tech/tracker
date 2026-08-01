@@ -1,5 +1,6 @@
 import React from "react";
 import "./globals.css";
+import { ToastProvider } from "../components/Toast";
 
 export const metadata = {
   title: "Squas Connect — Hotel Hub",
@@ -14,7 +15,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="bg-gray-50 text-gray-900 min-h-screen antialiased">
-        {children}
+        <ToastProvider>{children}</ToastProvider>
       </body>
     </html>
   );

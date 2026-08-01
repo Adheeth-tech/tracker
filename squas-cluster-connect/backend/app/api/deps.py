@@ -12,7 +12,7 @@ from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.core.enums import Role
+from app.core.enums import DriverStatus, Role
 from app.core.security import decode_access_token
 from app.models.user import User
 
@@ -57,3 +57,15 @@ def admin_only():
 
 def any_role(roles: Iterable[Role]):
     return require_roles(*roles)
+
+
+def ensure_active_driver(user: User) -> User:
+    """Reject pending or suspended drivers from operational actions."""
+    if user.role == Role.DRIVER:
+        driver = user.driver
+        if not driver or not driver.is_active or driver.status != DriverStatus.ACTIVE:
+            raise HTTPException(
+                status.HTTP_403_FORBIDDEN,
+                "Driver registration is pending admin approval",
+            )
+    return user

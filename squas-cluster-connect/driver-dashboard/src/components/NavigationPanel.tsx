@@ -34,6 +34,7 @@ export default function NavigationPanel({ trip, latitude, longitude }: Navigatio
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [voiceEnabled, setVoiceEnabled] = useState(false);
+  const [mapLoaded, setMapLoaded] = useState(false);
 
   const mapboxToken = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN;
   const currentPosition = useMemo(() => {
@@ -74,32 +75,35 @@ export default function NavigationPanel({ trip, latitude, longitude }: Navigatio
     mapRef.current = new mapboxgl.Map({
       container: mapContainerRef.current,
       style: "mapbox://styles/mapbox/streets-v12",
-      center: currentPosition ? [currentPosition.lng, currentPosition.lat] : [76.215, 10.528],
-      zoom: 14,
+      center: currentPosition ? [currentPosition.lng, currentPosition.lat] : [0, 0],
+      zoom: currentPosition ? 14 : 2,
     });
     mapRef.current.addControl(new mapboxgl.NavigationControl(), "top-right");
+    mapRef.current.on("load", () => setMapLoaded(true));
     return () => {
       markerRef.current?.remove();
       destinationMarkerRef.current?.remove();
       mapRef.current?.remove();
       mapRef.current = null;
+      setMapLoaded(false);
     };
   }, [mapboxToken]);
 
   useEffect(() => {
     const map = mapRef.current;
-    if (!map || !currentPosition) return;
+    if (!map || !mapLoaded || !currentPosition) return;
     const point: [number, number] = [currentPosition.lng, currentPosition.lat];
     if (!markerRef.current) {
       markerRef.current = new mapboxgl.Marker({ color: "#2563eb" }).setLngLat(point).addTo(map);
     } else {
       markerRef.current.setLngLat(point);
     }
-  }, [currentPosition]);
+    if (!route) map.flyTo({ center: point, zoom: 14, essential: true });
+  }, [currentPosition, route, mapLoaded]);
 
   useEffect(() => {
     const map = mapRef.current;
-    if (!map || !route) return;
+    if (!map || !mapLoaded || !route) return;
     const draw = () => {
       const source = map.getSource("navigation-route") as mapboxgl.GeoJSONSource | undefined;
       const data = { type: "Feature", properties: {}, geometry: route.geometry } as GeoJSON.Feature;
@@ -123,9 +127,8 @@ export default function NavigationPanel({ trip, latitude, longitude }: Navigatio
       route.geometry.coordinates.forEach(([lng, lat]) => bounds.extend([lng, lat]));
       map.fitBounds(bounds, { padding: 50, maxZoom: 16 });
     };
-    if (map.isStyleLoaded()) draw();
-    else map.once("load", draw);
-  }, [route]);
+    draw();
+  }, [route, mapLoaded]);
 
   useEffect(() => {
     if (!ACTIVE_STATUSES.has(trip.status)) return;

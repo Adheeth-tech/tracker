@@ -5,7 +5,7 @@
 //   const dash = await api.dashboard();
 
 import type {
-  Dashboard, Hotel, PaymentMode, PaymentStatus, PickupRequest,
+  Dashboard, Hotel, Payment, PaymentMode, PaymentStatus, PickupRequest,
   Token, Trip, TripStatus, Vehicle, VehiclePosition, Driver, NavigationRoute
 } from "./types";
 
@@ -35,7 +35,7 @@ function setToken(t: string | null) {
 
 async function req<T>(
   path: string,
-  method: "GET" | "POST" | "DELETE" = "GET",
+  method: "GET" | "POST" | "PATCH" | "DELETE" = "GET",
   body?: unknown,
 ): Promise<T> {
   const headers: Record<string, string> = { "content-type": "application/json" };
@@ -78,10 +78,20 @@ export const api = {
   listVehicles: () => req<Vehicle[]>("/fleet/vehicles"),
   createVehicle: (opts: { vehicle_number: string; capacity_litres: number; driver_id?: number | null }) =>
     req<Vehicle>("/fleet/vehicles", "POST", opts),
+  updateVehicle: (id: number, opts: { vehicle_number?: string; capacity_litres?: number; driver_id?: number | null }) =>
+    req<Vehicle>(`/fleet/vehicles/${id}`, "PATCH", opts),
+  activateVehicle: (id: number) => req<Vehicle>(`/fleet/vehicles/${id}/activate`, "POST"),
+  deactivateVehicle: (id: number) => req<Vehicle>(`/fleet/vehicles/${id}/deactivate`, "POST"),
+  deleteVehicle: (id: number) => req<void>(`/fleet/vehicles/${id}`, "DELETE"),
   listDrivers: () => req<Driver[]>("/fleet/drivers"),
   createDriver: (opts: { name: string; phone: string; license_number?: string }) =>
     req<Driver>("/fleet/drivers", "POST", opts),
+  updateDriver: (id: number, opts: { name?: string; phone?: string; license_number?: string }) =>
+    req<Driver>(`/fleet/drivers/${id}`, "PATCH", opts),
   approveDriver: (id: number) => req<Driver>(`/fleet/drivers/${id}/approve`, "POST"),
+  activateDriver: (id: number) => req<Driver>(`/fleet/drivers/${id}/activate`, "POST"),
+  deactivateDriver: (id: number) => req<Driver>(`/fleet/drivers/${id}/deactivate`, "POST"),
+  deleteDriver: (id: number) => req<void>(`/fleet/drivers/${id}`, "DELETE"),
 
   // ---- requests ----
   listRequests: (status?: string) =>
@@ -89,6 +99,8 @@ export const api = {
   approveRequest: (id: number) => req<PickupRequest>(`/requests/${id}/approve`, "POST"),
   assignRequest: (id: number, opts: { vehicle_id?: number; driver_id?: number; auto?: boolean }) =>
     req<Trip>(`/requests/${id}/assign`, "POST", opts),
+  reassignRequest: (id: number, opts: { vehicle_id?: number; driver_id?: number; auto?: boolean }) =>
+    req<Trip>(`/requests/${id}/assignment`, "PATCH", opts),
 
   // ---- trips ----
   listTrips: (onlyActive = false) =>
@@ -115,6 +127,7 @@ export const api = {
 
   // ---- payments ----
   pendingPayments: () => req<unknown[]>("/payments/pending"),
+  getPayment: (tripId: number) => req<Payment>(`/payments/trip/${tripId}`),
   updatePayment: (tripId: number, mode: PaymentMode, status: PaymentStatus, txn?: string) =>
     req<unknown>(`/payments/trip/${tripId}`, "POST",
       { payment_mode: mode, payment_status: status, transaction_id: txn }),

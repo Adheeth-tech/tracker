@@ -2,18 +2,21 @@
 
 import React, { useEffect, useState } from "react";
 import { api } from "../../lib/api";
-import { PickupRequest, Hotel, Vehicle, RequestStatus, Driver } from "../../lib/types";
+import { PickupRequest, Hotel, Vehicle, RequestStatus, Driver, Trip } from "../../lib/types";
 import ProtectedRoute from "../../components/ProtectedRoute";
 import AppShell from "../../components/AppShell";
+import { useToast } from "../../components/Toast";
 import DataTable, { Column } from "../../components/DataTable";
 import StatusBadge from "../../components/StatusBadge";
 import { AlertCircle, CheckCircle, UserPlus, RefreshCw, Layers } from "lucide-react";
 
 export default function RequestsPage() {
+  const { showToast } = useToast();
   const [requests, setRequests] = useState<PickupRequest[]>([]);
   const [hotels, setHotels] = useState<Hotel[]>([]);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [drivers, setDrivers] = useState<Driver[]>([]);
+  const [trips, setTrips] = useState<Trip[]>([]);
   
   const [statusFilter, setStatusFilter] = useState<string>("");
   const [loading, setLoading] = useState(true);
@@ -21,6 +24,7 @@ export default function RequestsPage() {
 
   // Assignment Modal State
   const [selectedReq, setSelectedReq] = useState<PickupRequest | null>(null);
+  const [selectedTrip, setSelectedTrip] = useState<Trip | null>(null);
   const [autoAssign, setAutoAssign] = useState(true);
   const [selectedVehId, setSelectedVehId] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -31,17 +35,19 @@ export default function RequestsPage() {
       setLoading(true);
       setError(null);
       
-      const [reqData, hotData, vehData, drvData] = await Promise.all([
+      const [reqData, hotData, vehData, drvData, tripData] = await Promise.all([
         api.listRequests(statusFilter || undefined),
         api.listHotels(),
         api.listVehicles(),
         api.listDrivers(),
+        api.listTrips(),
       ]);
 
       setRequests(reqData);
       setHotels(hotData);
       setVehicles(vehData);
       setDrivers(drvData);
+      setTrips(tripData);
     } catch (err: any) {
       console.error(err);
       setError(err.message || "Failed to load requests data.");
@@ -59,9 +65,11 @@ export default function RequestsPage() {
     setActionLoadingId(id);
     try {
       await api.approveRequest(id);
+      showToast("Pickup request approved.", "success");
       await fetchData();
     } catch (err: any) {
       console.error(err);
+      showToast(err.message || `Failed to approve request ${id}.`, "error");
       setError(err.message || `Failed to approve request ${id}.`);
     } finally {
       setActionLoadingId(null);
@@ -75,24 +83,28 @@ export default function RequestsPage() {
     setError(null);
     setSubmitting(true);
     try {
-      if (autoAssign) {
-        await api.assignRequest(selectedReq.id, { auto: true });
+      const assignment = autoAssign
+        ? { auto: true }
+        : (() => {
+            const vehicle = vehicles.find((v) => v.id === parseInt(selectedVehId));
+            if (!vehicle) throw new Error("Please select a valid vehicle");
+            return { vehicle_id: vehicle.id, driver_id: vehicle.driver_id || undefined };
+          })();
+
+      if (selectedTrip) {
+        await api.reassignRequest(selectedReq.id, assignment);
       } else {
-        const vehicle = vehicles.find((v) => v.id === parseInt(selectedVehId));
-        if (!vehicle) {
-          throw new Error("Please select a valid vehicle");
-        }
-        await api.assignRequest(selectedReq.id, {
-          vehicle_id: vehicle.id,
-          driver_id: vehicle.driver_id || undefined,
-        });
+        await api.assignRequest(selectedReq.id, assignment);
       }
       setSelectedReq(null);
+      setSelectedTrip(null);
       setAutoAssign(true);
       setSelectedVehId("");
+      showToast(selectedTrip ? "Tanker assignment updated." : "Tanker assigned successfully.", "success");
       await fetchData();
     } catch (err: any) {
       console.error(err);
+      showToast(err.message || "Failed to assign request.", "error");
       setError(err.message || "Failed to assign request.");
     } finally {
       setSubmitting(false);
@@ -141,6 +153,23 @@ export default function RequestsPage() {
       className: "font-mono text-slate-650",
     },
     {
+      header: "Urgency",
+      accessor: (item) => {
+        const urgent = item.urgency === "urgent" || item.urgency === "high";
+        return (
+          <span className={`inline-flex rounded-full border px-2 py-1 text-[10px] font-black uppercase tracking-wide ${
+            item.urgency === "high"
+              ? "border-red-200 bg-red-50 text-red-700"
+              : urgent
+                ? "border-amber-200 bg-amber-50 text-amber-700"
+                : "border-slate-200 bg-slate-50 text-slate-500"
+          }`}>
+            {item.urgency || "normal"}
+          </span>
+        );
+      },
+    },
+    {
       header: "Wastewater Type",
       accessor: (item) => item.wastewater_type.charAt(0).toUpperCase() + item.wastewater_type.slice(1),
       className: "text-slate-600 font-medium",
@@ -169,17 +198,22 @@ export default function RequestsPage() {
             </button>
           );
         }
-        if (statusClean === "approved") {
+        if (statusClean === "approved" || statusClean === "assigned") {
+          const trip = trips.find((candidate) => candidate.request_id === item.id) || null;
+          const canEdit = statusClean === "assigned" && trip?.status === "assigned" && !trip.accepted_at;
           return (
             <button
               onClick={() => {
                 setSelectedReq(item);
-                setAutoAssign(true);
+                setSelectedTrip(canEdit ? trip : null);
+                setAutoAssign(!canEdit);
+                setSelectedVehId("");
               }}
+              disabled={statusClean === "assigned" && !canEdit}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-650 hover:bg-indigo-750 text-white rounded-lg text-xs font-bold shadow-sm transition-colors cursor-pointer"
             >
               <UserPlus className="h-3.5 w-3.5" />
-              Assign Tanker
+              {canEdit ? "Edit Assignment" : statusClean === "assigned" ? "Locked" : "Assign Tanker"}
             </button>
           );
         }
@@ -255,10 +289,10 @@ export default function RequestsPage() {
               <div className="bg-white rounded-2xl border border-gray-150 max-w-md w-full shadow-2xl p-6 relative">
                 <h3 className="text-lg font-bold text-slate-900 mb-2 flex items-center gap-2">
                   <Layers className="h-5 w-5 text-indigo-600" />
-                  Dispatch Wastewater Tanker
+                  {selectedTrip ? "Edit Tanker Assignment" : "Dispatch Wastewater Tanker"}
                 </h3>
                 <p className="text-xs text-gray-400 mb-4">
-                  Assigning request <span className="font-bold font-mono text-slate-800">{selectedReq.request_code}</span> ({getHotelName(selectedReq.hotel_id)})
+                  {selectedTrip ? "Updating" : "Assigning"} request <span className="font-bold font-mono text-slate-800">{selectedReq.request_code}</span> ({getHotelName(selectedReq.hotel_id)})
                 </p>
 
                 {error && (
@@ -394,7 +428,7 @@ export default function RequestsPage() {
                       disabled={submitting || (!autoAssign && !selectedVehId)}
                       className="px-4 py-2 text-sm font-bold text-white bg-indigo-650 hover:bg-indigo-750 rounded-xl shadow-sm transition-colors disabled:opacity-50 cursor-pointer"
                     >
-                      {submitting ? "Dispatching..." : "Confirm Dispatch"}
+                      {submitting ? (selectedTrip ? "Updating..." : "Dispatching...") : (selectedTrip ? "Save Assignment" : "Confirm Dispatch")}
                     </button>
                   </div>
                 </form>

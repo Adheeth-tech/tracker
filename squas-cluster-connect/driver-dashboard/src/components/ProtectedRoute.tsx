@@ -12,6 +12,7 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [authorized, setAuthorized] = useState(false);
+  const [pendingApproval, setPendingApproval] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   useEffect(() => {
@@ -27,8 +28,17 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
         if (me.role !== "driver") {
           setErrorMsg("Access Denied: This dashboard is reserved for tanker drivers only.");
           setAuthorized(false);
+        } else if (!me.driver_id) {
+          setErrorMsg("Your account is not linked to a driver registration.");
+          setAuthorized(false);
         } else {
-          setAuthorized(true);
+          const driver = await api.getDriver(me.driver_id);
+          if (driver.status !== "active" || !driver.is_active) {
+            setPendingApproval(true);
+            setAuthorized(false);
+          } else {
+            setAuthorized(true);
+          }
         }
       } catch (err) {
         console.error("Auth check failed:", err);
@@ -70,6 +80,33 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
             className="w-full inline-flex justify-center py-2.5 px-4 border border-transparent rounded-lg shadow-sm text-sm font-semibold text-white bg-indigo-650 hover:bg-indigo-750 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors cursor-pointer"
           >
             Log Out & Go to Login
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (pendingApproval) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 px-4">
+        <div className="max-w-md w-full text-center bg-white p-8 border border-amber-100 rounded-2xl shadow-sm">
+          <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-amber-100 text-amber-700 mb-4">
+            <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l2 2m6-2a8 8 0 11-16 0 8 8 0 0116 0z" />
+            </svg>
+          </div>
+          <h2 className="text-lg font-bold text-gray-900 mb-2">Registration Pending Approval</h2>
+          <p className="text-sm text-gray-500 mb-6">
+            Your driver registration was received. An administrator must approve it before you can view jobs, accept trips, or use navigation.
+          </p>
+          <button
+            onClick={() => {
+              api.logout();
+              router.replace("/login");
+            }}
+            className="w-full inline-flex justify-center py-2.5 px-4 rounded-lg text-sm font-semibold text-white bg-indigo-650 hover:bg-indigo-750 transition-colors cursor-pointer"
+          >
+            Log Out
           </button>
         </div>
       </div>

@@ -56,15 +56,8 @@ export default function AdminTripDetailPage() {
         setQuantity(null);
       }
 
-      // Fetch payment details
-      try {
-        const payData = await api.pendingPayments();
-        const matchedPayment = payData.find((p: any) => p.trip_id === tripId);
-        setPayment(matchedPayment || null);
-      } catch (err) {
-        console.warn("No payment priced yet:", err);
-        setPayment(null);
-      }
+      // Payment is included in the trip response, including finalized payments.
+      setPayment(tripData.payment || null);
 
       setError(null);
     } catch (err: any) {
@@ -337,7 +330,7 @@ export default function AdminTripDetailPage() {
                   </div>
 
                   {/* Payment Details card */}
-                  <div className="bg-white border border-gray-150 rounded-2xl p-5 shadow-sm space-y-4">
+                  {payment?.payment_status !== "paid" && <div className="bg-white border border-gray-150 rounded-2xl p-5 shadow-sm space-y-4">
                     <div className="flex items-center gap-2 border-b border-gray-100 pb-3">
                       <DollarSign className="h-4.5 w-4.5 text-indigo-650" />
                       <h4 className="text-sm font-bold text-slate-800">Billing Information</h4>
@@ -365,7 +358,7 @@ export default function AdminTripDetailPage() {
                         Invoice or fare ledger is pending trip completion.
                       </div>
                     )}
-                  </div>
+                  </div>}
 
                 </div>
 

@@ -9,7 +9,7 @@ from urllib.request import Request, urlopen
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session, joinedload
 
-from app.api.deps import get_current_user, require_roles
+from app.api.deps import ensure_active_driver, get_current_user, require_roles
 from app.core.config import settings
 from app.core.database import get_db
 from app.core.enums import Role, TripStatus
@@ -42,6 +42,7 @@ def _get_trip(db: Session, trip_id: int, user: User) -> Trip:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Trip not found")
     if user.role == Role.DRIVER and trip.driver_id != user.driver_id:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Not your trip")
+    ensure_active_driver(user)
     return trip
 
 

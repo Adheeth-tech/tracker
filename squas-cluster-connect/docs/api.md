@@ -1,7 +1,7 @@
 # API reference
 
 Base URL: `/api/v1`. Interactive docs (Swagger UI) at `/docs`, ReDoc at `/redoc`.
-All routes except OTP request/verify and hotel self-registration require a
+All routes except OTP request/verify, hotel self-registration, and driver self-registration require a
 `Authorization: Bearer <token>` header. The role that may call each route is
 shown in the **Roles** column.
 
@@ -27,9 +27,19 @@ shown in the **Roles** column.
 | Method | Path | Roles | Purpose |
 |---|---|---|---|
 | POST | `/fleet/drivers` | admin | Create driver |
+| POST | `/fleet/drivers/register` | public | Self-register driver (starts `pending`) |
 | GET | `/fleet/drivers` | admin | List drivers |
+| PATCH | `/fleet/drivers/{id}` | admin | Edit driver details |
+| POST | `/fleet/drivers/{id}/approve` | admin | Approve driver → `active` |
+| POST | `/fleet/drivers/{id}/deactivate` | admin | Safely suspend driver (blocked during active trip) |
+| POST | `/fleet/drivers/{id}/activate` | admin | Reactivate driver |
+| DELETE | `/fleet/drivers/{id}` | admin | Delete driver only when it has no vehicle/trip history |
 | POST | `/fleet/vehicles` | admin | Create vehicle (optionally assign driver) |
 | GET | `/fleet/vehicles` | admin | List vehicles |
+| PATCH | `/fleet/vehicles/{id}` | admin | Edit vehicle details or assign an active driver |
+| POST | `/fleet/vehicles/{id}/deactivate` | admin | Safely deactivate vehicle (blocked during active trip) |
+| POST | `/fleet/vehicles/{id}/activate` | admin | Reactivate vehicle |
+| DELETE | `/fleet/vehicles/{id}` | admin | Delete vehicle only when it has no trip/GPS history |
 
 ## Requests & assignment (spec 4.2, 4.3)
 
@@ -39,6 +49,7 @@ shown in the **Roles** column.
 | GET | `/requests` | hotel (own), admin | List requests (`?status_filter=`) |
 | POST | `/requests/{id}/approve` | admin | Approve a request |
 | POST | `/requests/{id}/assign` | admin | Assign tanker+driver → opens a Trip. Body `{vehicle_id, driver_id}` or `{auto:true}` |
+| PATCH | `/requests/{id}/assignment` | admin | Reassign tanker+driver before the driver accepts the trip |
 
 ## Trips & quantity (spec 4.5, 4.6)
 
@@ -47,7 +58,7 @@ shown in the **Roles** column.
 | GET | `/trips` | driver (own), admin | List trips (`?only_active=true`) |
 | GET | `/trips/{id}` | any | Trip detail |
 | GET | `/trips/{id}/next-states` | any | Allowed next statuses |
-| POST | `/trips/{id}/advance` | driver, admin | Advance status; body `{target, location:{lat,lng}}` |
+| POST | `/trips/{id}/advance` | driver, admin | Advance status; driver may attach device GPS in `location:{lat,lng}` |
 | POST | `/trips/{id}/quantity` | driver, hotel, admin | Record/confirm collected litres (auto-prices trip) |
 
 ## Tracking (spec 4.4)
@@ -63,8 +74,8 @@ shown in the **Roles** column.
 | Method | Path | Roles | Purpose |
 |---|---|---|---|
 | GET | `/payments/trip/{id}` | any | Trip payment |
-| POST | `/payments/trip/{id}` | driver, hotel, admin | Create/update payment |
-| GET | `/payments/pending` | admin | Unpaid payments |
+| POST | `/payments/trip/{id}` | driver, hotel, admin | Submit/update payment; only admin can finalize as `paid` |
+| GET | `/payments/pending` | admin | Unpaid/partial payments only; paid records are retained in trip history |
 | POST | `/payments/invoices/generate` | admin | Monthly hotel-wise invoice |
 | GET | `/payments/invoices` | hotel (own), admin | List invoices |
 

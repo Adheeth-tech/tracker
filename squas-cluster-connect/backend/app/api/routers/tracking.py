@@ -11,7 +11,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_current_user, require_roles
+from app.api.deps import ensure_active_driver, get_current_user, require_roles
 from app.core.database import get_db
 from app.core.config import settings
 from app.core.enums import Role, TripStatus
@@ -36,6 +36,7 @@ def push_ping(
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Trip not found")
     if user.role == Role.DRIVER and trip.driver_id != user.driver_id:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Not your trip")
+    ensure_active_driver(user)
 
     now = datetime.now(timezone.utc)
     db.add(LocationLog(
@@ -63,6 +64,7 @@ def trip_track(
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Trip not found")
     if user.role == Role.HOTEL and trip.request.hotel_id != user.hotel_id:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Not your trip")
+    ensure_active_driver(user)
 
     logs = db.scalars(
         select(LocationLog)

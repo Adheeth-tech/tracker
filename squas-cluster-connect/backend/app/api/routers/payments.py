@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_current_user, require_roles
+from app.api.deps import ensure_active_driver, get_current_user, require_roles
 from app.core.database import get_db
 from app.core.enums import PaymentStatus, RequestStatus, Role
 from app.models.billing import Invoice, Payment
@@ -28,6 +28,7 @@ router = APIRouter(prefix="/payments", tags=["payments"])
 
 @router.get("/trip/{trip_id}", response_model=PaymentOut)
 def get_trip_payment(trip_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    ensure_active_driver(user)
     payment = db.scalars(select(Payment).where(Payment.trip_id == trip_id)).first()
     if not payment:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "No payment for trip")
@@ -48,6 +49,12 @@ def upsert_payment(
 
     if user.role == Role.DRIVER and trip.driver_id != user.driver_id:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Not your trip")
+    ensure_active_driver(user)
+    if payload.payment_status == PaymentStatus.PAID and user.role != Role.ADMIN:
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN,
+            "Only an administrator can approve and finalize a payment",
+        )
 
     payment = trip.payment or Payment(trip_id=trip.id)
     litres = trip.quantity.collected_litres if trip.quantity else None

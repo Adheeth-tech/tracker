@@ -37,6 +37,12 @@ class DriverCreate(BaseModel):
     license_number: str | None = None
 
 
+class DriverUpdate(BaseModel):
+    name: str | None = None
+    phone: str | None = None
+    license_number: str | None = None
+
+
 class DriverOut(DriverCreate):
     id: int
     is_active: bool
@@ -48,6 +54,16 @@ class DriverOut(DriverCreate):
 class VehicleCreate(BaseModel):
     vehicle_number: str
     capacity_litres: float
+    gps_device_id: str | None = None
+    driver_id: int | None = None
+    insurance_expiry: date | None = None
+    fitness_expiry: date | None = None
+    last_service_date: date | None = None
+
+
+class VehicleUpdate(BaseModel):
+    vehicle_number: str | None = None
+    capacity_litres: float | None = None
     gps_device_id: str | None = None
     driver_id: int | None = None
     insurance_expiry: date | None = None

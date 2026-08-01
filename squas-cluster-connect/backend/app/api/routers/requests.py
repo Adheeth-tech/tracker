@@ -29,6 +29,34 @@ from app.services.notifications import notify, notify_driver, notify_hotel
 router = APIRouter(prefix="/requests", tags=["requests"])
 
 
+def _resolve_assignment(db: Session, request: PickupRequest, payload: AssignmentRequest) -> tuple[Vehicle, Driver]:
+    """Resolve and validate an available vehicle/active driver pair."""
+    vehicle: Vehicle | None = None
+    if payload.auto and not payload.vehicle_id:
+        vehicle = auto_assign(db, request)
+        if not vehicle:
+            raise HTTPException(status.HTTP_409_CONFLICT, "No available vehicle to auto-assign")
+    elif payload.vehicle_id:
+        vehicle = db.get(Vehicle, payload.vehicle_id)
+        if not vehicle:
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, "vehicle_id not found")
+    else:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Provide vehicle_id or set auto=true")
+
+    if vehicle.status != VehicleStatus.AVAILABLE:
+        raise HTTPException(status.HTTP_409_CONFLICT, "Selected tanker is not available")
+
+    driver_id = payload.driver_id or vehicle.driver_id
+    driver = db.get(Driver, driver_id) if driver_id else None
+    if not driver_id or not driver:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "No valid driver for assignment")
+    if vehicle.driver_id != driver.id:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Selected driver is not assigned to this tanker")
+    if driver.status != DriverStatus.ACTIVE or not driver.is_active:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Driver is not active and approved")
+    return vehicle, driver
+
+
 @router.post("", response_model=PickupRequestOut, status_code=201)
 def create_request(
     payload: PickupRequestCreate,
@@ -122,31 +150,13 @@ def assign_request(
     if req.trip is not None:
         raise HTTPException(status.HTTP_409_CONFLICT, "Request already has a trip")
 
-    # Resolve the vehicle.
-    vehicle: Vehicle | None = None
-    if payload.auto and not payload.vehicle_id:
-        vehicle = auto_assign(db, req)
-        if not vehicle:
-            raise HTTPException(status.HTTP_409_CONFLICT, "No available vehicle to auto-assign")
-    elif payload.vehicle_id:
-        vehicle = db.get(Vehicle, payload.vehicle_id)
-        if not vehicle:
-            raise HTTPException(status.HTTP_400_BAD_REQUEST, "vehicle_id not found")
-    else:
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Provide vehicle_id or set auto=true")
-
-    driver_id = payload.driver_id or vehicle.driver_id
-    driver = db.get(Driver, driver_id) if driver_id else None
-    if not driver_id or not driver:
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, "No valid driver for assignment")
-    if driver.status != DriverStatus.ACTIVE:
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Driver is not yet approved")
+    vehicle, driver = _resolve_assignment(db, req, payload)
 
     now = datetime.now(timezone.utc)
     trip = Trip(
         trip_code=next_trip_code(db),
         request_id=req.id,
-        driver_id=driver_id,
+        driver_id=driver.id,
         vehicle_id=vehicle.id,
         status=TripStatus.ASSIGNED,
         assigned_at=now,
@@ -157,9 +167,57 @@ def assign_request(
     db.flush()
     audit.record(db, action="request_assigned", entity_type="trip", entity_id=trip.id,
                  actor_user_id=user.id, actor_role=user.role.value,
-                 detail=f"request={req.id} vehicle={vehicle.id} driver={driver_id}")
+                 detail=f"request={req.id} vehicle={vehicle.id} driver={driver.id}")
     notify_hotel(db, req.hotel_id, event="request_assigned")
-    notify_driver(db, driver_id, event="job_offer")
+    notify_driver(db, driver.id, event="job_offer")
+    db.commit()
+    db.refresh(trip)
+    return trip
+
+
+@router.patch("/{request_id}/assignment", response_model=TripOut)
+def reassign_request(
+    request_id: int,
+    payload: AssignmentRequest,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_roles(Role.ADMIN)),
+):
+    """Change the tanker/driver before the driver accepts or starts the trip."""
+    req = db.get(PickupRequest, request_id)
+    if not req or not req.trip:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Assigned trip not found")
+    trip = req.trip
+    if req.status != RequestStatus.ASSIGNED or trip.status != TripStatus.ASSIGNED or trip.accepted_at:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "Assignments can only be changed before the driver accepts the trip",
+        )
+
+    vehicle, driver = _resolve_assignment(db, req, payload)
+    if vehicle.id == trip.vehicle_id and driver.id == trip.driver_id:
+        raise HTTPException(status.HTTP_409_CONFLICT, "The same tanker and driver are already assigned")
+
+    old_vehicle = db.get(Vehicle, trip.vehicle_id)
+    old_driver_id = trip.driver_id
+    if old_vehicle and old_vehicle.id != vehicle.id:
+        old_vehicle.status = VehicleStatus.AVAILABLE
+
+    vehicle.status = VehicleStatus.ON_TRIP
+    trip.vehicle_id = vehicle.id
+    trip.driver_id = driver.id
+
+    audit.record(
+        db,
+        action="request_reassigned",
+        entity_type="trip",
+        entity_id=trip.id,
+        actor_user_id=user.id,
+        actor_role=user.role.value,
+        detail=f"request={req.id} old_driver={old_driver_id} new_driver={driver.id} new_vehicle={vehicle.id}",
+    )
+    notify_driver(db, old_driver_id, event="assignment_reassigned")
+    notify_driver(db, driver.id, event="job_offer")
+    notify_hotel(db, req.hotel_id, event="request_reassigned")
     db.commit()
     db.refresh(trip)
     return trip
