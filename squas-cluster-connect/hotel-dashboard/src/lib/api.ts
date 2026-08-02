@@ -1,5 +1,5 @@
 import type {
-  Token, Hotel, PickupRequest, Trip, Payment, Invoice, Notification
+  Token, Hotel, PickupRequest, Trip, Payment, Invoice, Notification, NavigationRoute
 } from "./types";
 
 const getApiBase = () => {
@@ -38,6 +38,7 @@ async function req<T>(
   const res = await fetch(`${BASE}${path}`, {
     method,
     headers,
+    cache: method === "GET" ? "no-store" : undefined,
     body: body !== undefined ? JSON.stringify(body) : undefined,
   });
 
@@ -104,6 +105,11 @@ export const api = {
 
   getTripTrail: (id: number) =>
     req<{ lat: number; lng: number; speed?: number | null; status: string; ts: string }[]>(`/tracking/trips/${id}`),
+
+  getNavigationRoute: (tripId: number, latitude: number, longitude: number) =>
+    req<NavigationRoute>(
+      `/navigation/trips/${tripId}/route?origin_lat=${encodeURIComponent(latitude)}&origin_lng=${encodeURIComponent(longitude)}`
+    ),
 
   confirmQuantity: (tripId: number, hotelConfirmedLitres: number, remarks?: string) =>
     req<any>(`/trips/${tripId}/quantity`, "POST", {

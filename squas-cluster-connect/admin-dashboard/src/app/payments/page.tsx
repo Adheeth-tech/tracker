@@ -4,7 +4,6 @@ import React, { useEffect, useState } from "react";
 import { api } from "../../lib/api";
 import { PaymentMode, PaymentStatus } from "../../lib/types";
 import ProtectedRoute from "../../components/ProtectedRoute";
-import AppShell from "../../components/AppShell";
 import DataTable, { Column } from "../../components/DataTable";
 import StatusBadge from "../../components/StatusBadge";
 import { AlertCircle, CreditCard, RefreshCw, FileText, Check } from "lucide-react";
@@ -175,7 +174,6 @@ export default function PaymentsPage() {
 
   return (
     <ProtectedRoute>
-      <AppShell>
         <div className="space-y-8">
           
           {error && (
@@ -400,7 +398,6 @@ export default function PaymentsPage() {
           )}
 
         </div>
-      </AppShell>
     </ProtectedRoute>
   );
 }

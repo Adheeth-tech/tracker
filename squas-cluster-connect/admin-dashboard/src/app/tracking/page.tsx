@@ -5,7 +5,6 @@ import dynamic from "next/dynamic";
 import { api } from "../../lib/api";
 import { VehiclePosition, Hotel, NavigationRoute } from "../../lib/types";
 import ProtectedRoute from "../../components/ProtectedRoute";
-import AppShell from "../../components/AppShell";
 import DataTable, { Column } from "../../components/DataTable";
 import StatusBadge from "../../components/StatusBadge";
 import {
@@ -46,6 +45,9 @@ export default function TrackingPage() {
   const [plannedRoute, setPlannedRoute] = useState<NavigationRoute | null>(null);
   const routeFetchedAtRef = useRef(0);
   const routeKeyRef = useRef<string | null>(null);
+  const routeRequestIdRef = useRef(0);
+  const routeInFlightKeyRef = useRef<string | null>(null);
+  const autoSelectionAttemptedRef = useRef(false);
 
   // Search & Filter state
   const [searchQuery, setSearchQuery] = useState("");
@@ -92,6 +94,8 @@ export default function TrackingPage() {
 
   const fetchRoute = async (vehicle: VehiclePosition) => {
     if (!vehicle.trip_id || vehicle.latitude == null || vehicle.longitude == null) {
+      routeRequestIdRef.current += 1;
+      routeInFlightKeyRef.current = null;
       setPlannedRoute(null);
       routeFetchedAtRef.current = 0;
       routeKeyRef.current = null;
@@ -104,13 +108,23 @@ export default function TrackingPage() {
       setPlannedRoute(null);
     }
     if (Date.now() - routeFetchedAtRef.current < 60000 && plannedRoute) return;
+    if (routeInFlightKeyRef.current === routeKey) return;
+
+    routeInFlightKeyRef.current = routeKey;
+    const requestId = ++routeRequestIdRef.current;
     try {
       const route = await api.navigationRoute(vehicle.trip_id, vehicle.latitude, vehicle.longitude);
+      if (requestId !== routeRequestIdRef.current || routeKeyRef.current !== routeKey) return;
       setPlannedRoute(route);
       routeFetchedAtRef.current = Date.now();
     } catch (err) {
+      if (requestId !== routeRequestIdRef.current) return;
       console.warn("Failed to fetch planned route:", err);
       setPlannedRoute(null);
+    } finally {
+      if (routeInFlightKeyRef.current === routeKey) {
+        routeInFlightKeyRef.current = null;
+      }
     }
   };
 
@@ -126,6 +140,25 @@ export default function TrackingPage() {
 
     return () => clearInterval(interval);
   }, []);
+
+  // The route is a focused view, but the first active vehicle should be
+  // focused automatically. Without this, selectedVehicleId stays null and
+  // fetchRoute is never called even while a tanker is working toward a hotel.
+  useEffect(() => {
+    if (autoSelectionAttemptedRef.current || positions.length === 0) return;
+
+    const candidate = positions.find(
+      (vehicle) =>
+        vehicle.trip_id != null &&
+        vehicle.latitude != null &&
+        vehicle.longitude != null &&
+        vehicle.status === "on_trip"
+    );
+    if (!candidate) return;
+
+    autoSelectionAttemptedRef.current = true;
+    setSelectedVehicleId(candidate.vehicle_id);
+  }, [positions]);
 
   // Whenever selected vehicle changes, load its trail if it is on a trip
   useEffect(() => {
@@ -149,6 +182,8 @@ export default function TrackingPage() {
   }, [selectedVehicleId, positions]);
 
   const handleSelectVehicle = (vehicleId: number) => {
+    routeRequestIdRef.current += 1;
+    routeInFlightKeyRef.current = null;
     routeFetchedAtRef.current = 0;
     routeKeyRef.current = null;
     setPlannedRoute(null);
@@ -156,6 +191,9 @@ export default function TrackingPage() {
   };
 
   const clearSelection = () => {
+    routeRequestIdRef.current += 1;
+    routeInFlightKeyRef.current = null;
+    autoSelectionAttemptedRef.current = true;
     setSelectedVehicleId(null);
     setTrail(null);
     setPlannedRoute(null);
@@ -220,7 +258,6 @@ export default function TrackingPage() {
 
   return (
     <ProtectedRoute>
-      <AppShell>
         <div className="space-y-6">
           {/* Header row */}
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-gray-150 pb-5">
@@ -478,7 +515,6 @@ export default function TrackingPage() {
           )}
 
         </div>
-      </AppShell>
     </ProtectedRoute>
   );
 }

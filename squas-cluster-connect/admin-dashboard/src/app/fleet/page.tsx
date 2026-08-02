@@ -4,7 +4,6 @@ import React, { useEffect, useState } from "react";
 import { api } from "../../lib/api";
 import { Vehicle, Driver } from "../../lib/types";
 import ProtectedRoute from "../../components/ProtectedRoute";
-import AppShell from "../../components/AppShell";
 import { useToast } from "../../components/Toast";
 import DataTable, { Column } from "../../components/DataTable";
 import StatusBadge from "../../components/StatusBadge";
@@ -363,7 +362,6 @@ export default function FleetPage() {
 
   return (
     <ProtectedRoute>
-      <AppShell>
         <div className="space-y-6">
           {/* Header Action Row */}
           <div className="flex justify-between items-center border-b border-gray-150 pb-4">
@@ -594,7 +592,6 @@ export default function FleetPage() {
           )}
 
         </div>
-      </AppShell>
     </ProtectedRoute>
   );
 }

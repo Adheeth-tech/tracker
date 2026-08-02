@@ -42,6 +42,10 @@ def _get_trip(db: Session, trip_id: int, user: User) -> Trip:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Trip not found")
     if user.role == Role.DRIVER and trip.driver_id != user.driver_id:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Not your trip")
+    if user.role == Role.HOTEL and (
+        not trip.request or trip.request.hotel_id != user.hotel_id
+    ):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Not your hotel's trip")
     ensure_active_driver(user)
     return trip
 
@@ -82,7 +86,7 @@ def route_to_trip_destination(
     origin_lat: float,
     origin_lng: float,
     db: Session = Depends(get_db),
-    user: User = Depends(require_roles(Role.DRIVER, Role.ADMIN)),
+    user: User = Depends(require_roles(Role.DRIVER, Role.ADMIN, Role.HOTEL)),
 ):
     """Calculate a road route from the supplied GPS origin to the active destination."""
     trip = _get_trip(db, trip_id, user)

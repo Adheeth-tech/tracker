@@ -39,6 +39,7 @@ async function req<T>(
   const res = await fetch(`${BASE}${path}`, {
     method,
     headers,
+    cache: method === "GET" ? "no-store" : undefined,
     body: body !== undefined ? JSON.stringify(body) : undefined,
   });
 

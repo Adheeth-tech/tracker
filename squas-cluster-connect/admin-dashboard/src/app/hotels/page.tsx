@@ -4,7 +4,6 @@ import React, { useEffect, useState } from "react";
 import { api } from "../../lib/api";
 import { Hotel } from "../../lib/types";
 import ProtectedRoute from "../../components/ProtectedRoute";
-import AppShell from "../../components/AppShell";
 import DataTable, { Column } from "../../components/DataTable";
 import StatusBadge from "../../components/StatusBadge";
 import { AlertCircle, CheckCircle, RefreshCw } from "lucide-react";
@@ -98,7 +97,6 @@ export default function HotelsPage() {
 
   return (
     <ProtectedRoute>
-      <AppShell>
         <div className="space-y-6">
           <div className="flex justify-between items-center">
             <div>
@@ -134,7 +132,6 @@ export default function HotelsPage() {
             />
           )}
         </div>
-      </AppShell>
     </ProtectedRoute>
   );
 }

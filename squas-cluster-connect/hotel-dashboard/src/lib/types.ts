@@ -104,6 +104,26 @@ export interface VehiclePosition {
   trip_id?: number | null;
 }
 
+export interface NavigationRoute {
+  destination: {
+    type: "hotel" | "plant";
+    name: string;
+    address: string;
+    latitude: number;
+    longitude: number;
+  };
+  distance_meters: number;
+  duration_seconds: number;
+  geometry: { type: string; coordinates: number[][] };
+  steps: {
+    instruction?: string | null;
+    distance_meters?: number | null;
+    duration_seconds?: number | null;
+    maneuver?: string | null;
+    location?: number[] | null;
+  }[];
+}
+
 export interface Payment {
   id: number;
   trip_id: number;

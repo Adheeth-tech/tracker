@@ -4,10 +4,10 @@ import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { api } from "../../../lib/api";
-import { Trip, TripStatus } from "../../../lib/types";
+import { Trip, TripStatus, NavigationRoute } from "../../../lib/types";
 import ProtectedRoute from "../../../components/ProtectedRoute";
-import AppShell from "../../../components/AppShell";
 import StatusBadge from "../../../components/StatusBadge";
+import TripMap from "../../../components/TripMap";
 import {
   ArrowLeft,
   RefreshCw,
@@ -27,6 +27,7 @@ export default function AdminTripDetailPage() {
 
   const [trip, setTrip] = useState<Trip | null>(null);
   const [trail, setTrail] = useState<{ lat: number; lng: number; speed?: number | null; status: string; ts: string }[]>([]);
+  const [route, setRoute] = useState<NavigationRoute | null>(null);
   const [quantity, setQuantity] = useState<any | null>(null);
   const [payment, setPayment] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
@@ -43,8 +44,19 @@ export default function AdminTripDetailPage() {
       try {
         const trailData = await api.tripTrail(tripId);
         setTrail(trailData);
+        if (trailData.length > 0 && !["closed", "cancelled"].includes(tripData.status)) {
+          try {
+            setRoute(await api.navigationRoute(tripId, trailData[0].lat, trailData[0].lng));
+          } catch (routeErr) {
+            console.warn("Failed to load trip route:", routeErr);
+            setRoute(null);
+          }
+        } else {
+          setRoute(null);
+        }
       } catch (err) {
         console.error("Failed to load trail:", err);
+        setRoute(null);
       }
 
       // Fetch quantity record
@@ -100,7 +112,6 @@ export default function AdminTripDetailPage() {
 
   return (
     <ProtectedRoute>
-      <AppShell>
         <div className="space-y-6">
           {/* Header Row */}
           <div className="flex justify-between items-center border-b border-gray-150 pb-5">
@@ -178,6 +189,25 @@ export default function AdminTripDetailPage() {
                         </p>
                       </div>
                     </div>
+                  </div>
+
+                  <div className="bg-white border border-gray-150 rounded-2xl p-6 shadow-sm space-y-4">
+                    <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+                      <div>
+                        <h4 className="text-sm font-bold text-slate-800">Live Trip Map</h4>
+                        <p className="mt-1 text-[10px] font-medium text-gray-400">Driver trail, latest position, and route destination.</p>
+                      </div>
+                      {route && <span className="rounded bg-sky-50 px-2 py-1 text-[10px] font-bold text-sky-700">ETA {Math.ceil(route.duration_seconds / 60)} min</span>}
+                    </div>
+                    <TripMap
+                      trail={trail}
+                      route={route}
+                      destination={trip.request?.hotel ? {
+                        name: trip.request.hotel.hotel_name,
+                        latitude: trip.request.hotel.latitude,
+                        longitude: trip.request.hotel.longitude,
+                      } : null}
+                    />
                   </div>
 
                   {/* Complete Operational Timeline */}
@@ -366,7 +396,6 @@ export default function AdminTripDetailPage() {
             )
           )}
         </div>
-      </AppShell>
     </ProtectedRoute>
   );
 }

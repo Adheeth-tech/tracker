@@ -4,7 +4,6 @@ import React, { useEffect, useState } from "react";
 import { api } from "../../lib/api";
 import { PickupRequest, Hotel, Vehicle, RequestStatus, Driver, Trip } from "../../lib/types";
 import ProtectedRoute from "../../components/ProtectedRoute";
-import AppShell from "../../components/AppShell";
 import { useToast } from "../../components/Toast";
 import DataTable, { Column } from "../../components/DataTable";
 import StatusBadge from "../../components/StatusBadge";
@@ -231,7 +230,6 @@ export default function RequestsPage() {
 
   return (
     <ProtectedRoute>
-      <AppShell>
         <div className="space-y-6">
           {/* Header Controls */}
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-gray-150 pb-5">
@@ -437,7 +435,6 @@ export default function RequestsPage() {
           )}
 
         </div>
-      </AppShell>
     </ProtectedRoute>
   );
 }

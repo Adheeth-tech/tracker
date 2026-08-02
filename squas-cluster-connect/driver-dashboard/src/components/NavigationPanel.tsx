@@ -30,6 +30,7 @@ export default function NavigationPanel({ trip, latitude, longitude }: Navigatio
   const destinationMarkerRef = useRef<mapboxgl.Marker | null>(null);
   const wakeLockRef = useRef<WakeLockSentinel | null>(null);
   const positionRef = useRef<{ lat: number; lng: number } | null>(null);
+  const retryTimerRef = useRef<number | null>(null);
   const [route, setRoute] = useState<NavigationRoute | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -64,6 +65,13 @@ export default function NavigationPanel({ trip, latitude, longitude }: Navigatio
       setRoute(await api.getNavigationRoute(trip.id, origin.lat, origin.lng));
     } catch (err: any) {
       setError(err.message || "Unable to calculate a road route.");
+      // A route request can race the first GPS fix or backend trip refresh.
+      // Retry once shortly after the inputs have settled instead of requiring
+      // the driver to reload the page.
+      if (retryTimerRef.current) window.clearTimeout(retryTimerRef.current);
+      retryTimerRef.current = window.setTimeout(() => {
+        if (ACTIVE_STATUSES.has(trip.status) && positionRef.current) loadRoute();
+      }, 5000);
     } finally {
       setLoading(false);
     }
@@ -79,11 +87,24 @@ export default function NavigationPanel({ trip, latitude, longitude }: Navigatio
       zoom: currentPosition ? 14 : 2,
     });
     mapRef.current.addControl(new mapboxgl.NavigationControl(), "top-right");
-    mapRef.current.on("load", () => setMapLoaded(true));
+    const map = mapRef.current;
+    const resizeObserver = new ResizeObserver(() => map.resize());
+    resizeObserver.observe(mapContainerRef.current);
+    const resizeAfterMount = window.requestAnimationFrame(() => map.resize());
+    map.on("load", () => {
+      setMapLoaded(true);
+      map.resize();
+    });
+    map.on("error", () => {
+      setError("The map could not load. Check the Mapbox token or network connection.");
+    });
     return () => {
+      resizeObserver.disconnect();
+      window.cancelAnimationFrame(resizeAfterMount);
+      if (retryTimerRef.current) window.clearTimeout(retryTimerRef.current);
       markerRef.current?.remove();
       destinationMarkerRef.current?.remove();
-      mapRef.current?.remove();
+      map.remove();
       mapRef.current = null;
       setMapLoaded(false);
     };
@@ -133,6 +154,8 @@ export default function NavigationPanel({ trip, latitude, longitude }: Navigatio
   useEffect(() => {
     if (!ACTIVE_STATUSES.has(trip.status)) return;
     setRoute(null);
+    setError(null);
+    if (retryTimerRef.current) window.clearTimeout(retryTimerRef.current);
   }, [trip.id, trip.status]);
 
   useEffect(() => {

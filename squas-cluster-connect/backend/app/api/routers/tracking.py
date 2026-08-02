@@ -95,12 +95,21 @@ def live_map(
                 Trip.status.not_in([TripStatus.CLOSED, TripStatus.CANCELLED]),
             )
         ).first()
+        last_location_at = v.last_location_at
+        # SQLite returns DateTime values without tzinfo even though the app
+        # stores UTC timestamps. Normalize before comparing with the aware UTC
+        # stale cutoff to avoid naive/aware datetime TypeError.
+        comparable_location_at = (
+            last_location_at.replace(tzinfo=timezone.utc)
+            if last_location_at is not None and last_location_at.tzinfo is None
+            else last_location_at
+        )
         out.append(VehiclePosition(
             vehicle_id=v.id, vehicle_number=v.vehicle_number,
             latitude=v.last_lat, longitude=v.last_lng,
             status=v.status.value, trip_id=active.id if active else None,
             trip_status=active.status.value if active else None,
-            last_location_at=v.last_location_at,
-            stale=not v.last_location_at or v.last_location_at < stale_before,
+            last_location_at=last_location_at,
+            stale=not comparable_location_at or comparable_location_at < stale_before,
         ))
     return out

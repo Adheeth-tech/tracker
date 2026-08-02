@@ -4,7 +4,6 @@ import React, { useEffect, useState } from "react";
 import { api } from "../../lib/api";
 import { Dashboard } from "../../lib/types";
 import ProtectedRoute from "../../components/ProtectedRoute";
-import AppShell from "../../components/AppShell";
 import DataTable, { Column } from "../../components/DataTable";
 import { Droplet, Award, DollarSign, Activity, AlertCircle, TrendingUp } from "lucide-react";
 
@@ -52,7 +51,6 @@ export default function DashboardPage() {
 
   return (
     <ProtectedRoute>
-      <AppShell>
         {loading && (
           <div className="flex flex-col items-center justify-center py-20">
             <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-indigo-600"></div>
@@ -170,7 +168,6 @@ export default function DashboardPage() {
             </div>
           </div>
         )}
-      </AppShell>
     </ProtectedRoute>
   );
 }

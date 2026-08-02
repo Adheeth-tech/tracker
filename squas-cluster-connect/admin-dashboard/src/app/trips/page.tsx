@@ -5,7 +5,6 @@ import Link from "next/link";
 import { api } from "../../lib/api";
 import { Trip, Vehicle, TripStatus, Driver } from "../../lib/types";
 import ProtectedRoute from "../../components/ProtectedRoute";
-import AppShell from "../../components/AppShell";
 import DataTable, { Column } from "../../components/DataTable";
 import StatusBadge from "../../components/StatusBadge";
 import { AlertCircle, RefreshCw, Eye, Navigation, Award, Compass, Trash2 } from "lucide-react";
@@ -244,7 +243,6 @@ export default function TripsPage() {
 
   return (
     <ProtectedRoute>
-      <AppShell>
         <div className="space-y-6">
           {/* Controls Header */}
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-gray-150 pb-5">
@@ -443,7 +441,6 @@ export default function TripsPage() {
           )}
 
         </div>
-      </AppShell>
     </ProtectedRoute>
   );
 }

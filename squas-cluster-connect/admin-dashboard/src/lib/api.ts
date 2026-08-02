@@ -45,12 +45,21 @@ async function req<T>(
   const res = await fetch(`${BASE}${path}`, {
     method,
     headers,
+    cache: method === "GET" ? "no-store" : undefined,
     body: body !== undefined ? JSON.stringify(body) : undefined,
   });
 
   if (!res.ok) {
     const detail = await res.text();
-    throw new Error(`${res.status} ${res.statusText}: ${detail}`);
+    let message = detail;
+    try {
+      const parsed = JSON.parse(detail) as { detail?: string | { msg?: string }[] };
+      if (typeof parsed.detail === "string") message = parsed.detail;
+      else if (Array.isArray(parsed.detail)) message = parsed.detail.map((item) => item.msg).filter(Boolean).join(", ");
+    } catch {
+      // Keep the raw response for non-JSON backend errors.
+    }
+    throw new Error(`${res.status} ${res.statusText}: ${message || "Request failed"}`);
   }
   if (res.status === 204) return undefined as T;
   return res.json() as Promise<T>;

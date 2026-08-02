@@ -1,11 +1,10 @@
 "use client";
 
-import React, { useEffect, useRef } from "react";
-import L from "leaflet";
-import "leaflet/dist/leaflet.css";
+import { useEffect, useRef, useState } from "react";
+import mapboxgl from "mapbox-gl";
+import "mapbox-gl/dist/mapbox-gl.css";
 import { VehiclePosition, Hotel } from "../lib/types";
 
-// Types for the component props
 interface LiveMapProps {
   positions: VehiclePosition[];
   hotels: Hotel[];
@@ -13,6 +12,18 @@ interface LiveMapProps {
   onSelectVehicle: (id: number) => void;
   trail: { lat: number; lng: number; speed?: number | null; status: string; ts: string }[] | null;
   plannedRoute?: { type: string; coordinates: number[][] } | null;
+}
+
+const token = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN;
+
+function markerElement(label: string, color: string, selected: boolean) {
+  const element = document.createElement("div");
+  element.className = "flex flex-col items-center cursor-pointer";
+  element.innerHTML = `
+    <div style="background:${color};border-color:${selected ? "#fff" : "rgba(15,23,42,.35)"};width:32px;height:32px;border-radius:9999px;border-width:3px;box-shadow:0 3px 10px rgba(15,23,42,.3);display:flex;align-items:center;justify-content:center;color:white;font-size:15px">●</div>
+    <div style="margin-top:2px;background:#0f172a;color:#fff;padding:2px 5px;border-radius:4px;font:700 10px ui-monospace,monospace;white-space:nowrap">${label}</div>
+  `;
+  return element;
 }
 
 export default function LiveMap({
@@ -23,264 +34,138 @@ export default function LiveMap({
   trail,
   plannedRoute,
 }: LiveMapProps) {
-  const mapContainerRef = useRef<HTMLDivElement>(null);
-  const mapRef = useRef<L.Map | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const mapRef = useRef<mapboxgl.Map | null>(null);
+  const vehicleMarkersRef = useRef<mapboxgl.Marker[]>([]);
+  const hotelMarkersRef = useRef<mapboxgl.Marker[]>([]);
+  const [mapReady, setMapReady] = useState(false);
+  const lastViewportKeyRef = useRef<string | null>(null);
 
-  // Layer groups to easily clear and update markers/polylines
-  const vehicleLayerGroupRef = useRef<L.LayerGroup | null>(null);
-  const hotelLayerGroupRef = useRef<L.LayerGroup | null>(null);
-  const trailLayerGroupRef = useRef<L.LayerGroup | null>(null);
-  const routeLayerGroupRef = useRef<L.LayerGroup | null>(null);
-
-  // Initialize Map
   useEffect(() => {
-    if (!mapContainerRef.current || mapRef.current) return;
+    if (!containerRef.current || !token) return;
 
-    // Start globally until live positions or hotel locations are available.
-    const map = L.map(mapContainerRef.current, {
-      center: [20, 0],
-      zoom: 2,
-      zoomControl: false, // will add in bottom-right for clean UI
+    mapboxgl.accessToken = token;
+    const map = new mapboxgl.Map({
+      container: containerRef.current,
+      style: "mapbox://styles/mapbox/streets-v12",
+      center: [76.2144, 10.5276],
+      zoom: 8,
+      attributionControl: true,
+    });
+    mapRef.current = map;
+    map.addControl(new mapboxgl.NavigationControl(), "bottom-right");
+
+    const resizeObserver = new ResizeObserver(() => map.resize());
+    resizeObserver.observe(containerRef.current);
+    const frame = window.requestAnimationFrame(() => map.resize());
+    map.on("load", () => {
+      map.resize();
+      setMapReady(true);
     });
 
-    mapRef.current = map;
-
-    // Add zoom control at bottom right
-    L.control.zoom({ position: "bottomright" }).addTo(map);
-
-    // Use CartoDB Positron sleek tiles (modern, minimalist, light style)
-    L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
-      attribution:
-        '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
-      maxZoom: 20,
-    }).addTo(map);
-
-    // Initialize layer groups and add to map
-    vehicleLayerGroupRef.current = L.layerGroup().addTo(map);
-    hotelLayerGroupRef.current = L.layerGroup().addTo(map);
-    trailLayerGroupRef.current = L.layerGroup().addTo(map);
-    routeLayerGroupRef.current = L.layerGroup().addTo(map);
-
     return () => {
-      if (mapRef.current) {
-        mapRef.current.remove();
-        mapRef.current = null;
-      }
+      resizeObserver.disconnect();
+      window.cancelAnimationFrame(frame);
+      vehicleMarkersRef.current.forEach((marker) => marker.remove());
+      hotelMarkersRef.current.forEach((marker) => marker.remove());
+      map.remove();
+      mapRef.current = null;
+      setMapReady(false);
+      lastViewportKeyRef.current = null;
     };
   }, []);
 
-  // Update Markers and Trails dynamically
   useEffect(() => {
     const map = mapRef.current;
-    if (!map) return;
+    if (!map || !mapReady) return;
 
-    const vehicleGroup = vehicleLayerGroupRef.current;
-    const hotelGroup = hotelLayerGroupRef.current;
-    const trailGroup = trailLayerGroupRef.current;
-    const routeGroup = routeLayerGroupRef.current;
+    vehicleMarkersRef.current.forEach((marker) => marker.remove());
+    hotelMarkersRef.current.forEach((marker) => marker.remove());
 
-    if (!vehicleGroup || !hotelGroup || !trailGroup || !routeGroup) return;
+    const bounds = new mapboxgl.LngLatBounds();
+    const vehiclePoints: [number, number][] = [];
 
-    // Clear old markers/polylines
-    vehicleGroup.clearLayers();
-    hotelGroup.clearLayers();
-    trailGroup.clearLayers();
-    routeGroup.clearLayers();
-
-    const bounds: L.LatLngExpression[] = [];
-
-    // --- RENDER HOTELS ---
     hotels.forEach((hotel) => {
-      if (hotel.latitude !== null && hotel.latitude !== undefined &&
-          hotel.longitude !== null && hotel.longitude !== undefined) {
-        const hotelCoords: [number, number] = [hotel.latitude, hotel.longitude];
-        bounds.push(hotelCoords);
-
-        // Custom Purple Hotel pin
-        const hotelIcon = L.divIcon({
-          html: `
-            <div class="flex items-center justify-center w-8 h-8 rounded-full border-2 border-indigo-700 bg-indigo-600 text-white shadow-md shadow-indigo-300">
-              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-            </div>
-          `,
-          className: "custom-hotel-icon",
-          iconSize: [32, 32],
-          iconAnchor: [16, 16],
-        });
-
-        const marker = L.marker(hotelCoords, { icon: hotelIcon })
-          .bindPopup(`
-            <div class="p-2 space-y-1 text-slate-800 font-sans">
-              <h4 class="font-bold text-sm text-indigo-700">${hotel.hotel_name}</h4>
-              <p class="text-xs text-slate-500 font-medium">${hotel.address || "Thrissur, Kerala"}</p>
-              <div class="flex items-center gap-1.5 mt-2">
-                <span class="text-[10px] bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded-full font-bold border border-indigo-100">Hotel Hub</span>
-                <span class="text-[10px] bg-slate-100 text-slate-700 px-2 py-0.5 rounded-full font-mono">${hotel.contact_person || "Contact Person"}</span>
-              </div>
-            </div>
-          `);
-        hotelGroup.addLayer(marker);
-      }
+      if (hotel.latitude == null || hotel.longitude == null) return;
+      const point: [number, number] = [hotel.longitude, hotel.latitude];
+      bounds.extend(point);
+      const marker = new mapboxgl.Marker({ color: "#7c3aed" })
+        .setLngLat(point)
+        .setPopup(new mapboxgl.Popup({ offset: 20 }).setHTML(`<strong>${hotel.hotel_name}</strong><br/>Hotel hub`))
+        .addTo(map);
+      hotelMarkersRef.current.push(marker);
     });
 
-    // --- RENDER VEHICLES ---
     positions.forEach((vehicle) => {
-      if (vehicle.latitude !== null && vehicle.latitude !== undefined &&
-          vehicle.longitude !== null && vehicle.longitude !== undefined) {
-        const vehicleCoords: [number, number] = [vehicle.latitude, vehicle.longitude];
-        bounds.push(vehicleCoords);
-
-        // Map status to Tailwind colors
-        let statusColor = "bg-slate-400 border-slate-500 shadow-slate-100 text-white";
-        if (vehicle.status === "available") {
-          statusColor = "bg-emerald-500 border-emerald-600 shadow-emerald-200 text-white";
-        } else if (vehicle.status === "on_trip") {
-          statusColor = "bg-blue-600 border-blue-700 shadow-blue-200 text-white";
-        } else if (vehicle.status === "maintenance") {
-          statusColor = "bg-amber-500 border-amber-600 shadow-amber-200 text-white";
-        }
-
-        // Custom HTML vehicle icon
-        const vehicleIcon = L.divIcon({
-          html: `
-            <div class="relative flex flex-col items-center">
-              <div class="flex items-center justify-center w-8 h-8 rounded-full border-2 shadow-lg ${statusColor} transition-transform hover:scale-110">
-                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2"/><path d="M19 18h2a1 1 0 0 0 1-1v-5.5a1.5 1.5 0 0 0-.5-1.1L18 7.5a1.5 1.5 0 0 0-1.1-.5H14"/><circle cx="7" cy="18" r="2"/><circle cx="17" cy="18" r="2"/></svg>
-              </div>
-              <div class="absolute -bottom-6 bg-slate-900 text-[10px] text-white px-1.5 py-0.5 rounded font-mono font-bold whitespace-nowrap border border-slate-700 shadow-md">
-                ${vehicle.vehicle_number}
-              </div>
-            </div>
-          `,
-          className: "custom-vehicle-icon",
-          iconSize: [32, 42],
-          iconAnchor: [16, 21],
-        });
-
-        const isSelected = selectedVehicleId === vehicle.vehicle_id;
-
-        const marker = L.marker(vehicleCoords, { icon: vehicleIcon });
-        
-        // Popup details
-        marker.bindPopup(`
-          <div class="p-2.5 space-y-1.5 text-slate-800 font-sans min-w-[200px]">
-            <div class="flex justify-between items-center gap-4">
-              <h4 class="font-bold text-sm text-slate-950 font-mono">${vehicle.vehicle_number}</h4>
-              <span class="text-[10px] px-2 py-0.5 rounded-full font-bold border ${
-                vehicle.status === "available"
-                  ? "bg-green-50 text-green-700 border-green-200"
-                  : vehicle.status === "on_trip"
-                  ? "bg-blue-50 text-blue-700 border-blue-200"
-                  : "bg-amber-50 text-amber-700 border-amber-200"
-              }">${vehicle.status.toUpperCase()}</span>
-            </div>
-            <p class="text-xs text-slate-500 font-semibold">Active Trip: <span class="font-bold text-slate-700">${
-              vehicle.trip_id ? `#${vehicle.trip_id}` : "None"
-            }</span></p>
-            <p class="text-[10px] text-slate-400 font-mono mt-1">Coords: ${vehicle.latitude.toFixed(5)}, ${vehicle.longitude.toFixed(5)}</p>
-          </div>
-        `);
-
-        // Click handler to select vehicle
-        marker.on("click", () => {
-          onSelectVehicle(vehicle.vehicle_id);
-        });
-
-        vehicleGroup.addLayer(marker);
-
-        // If selected, auto open popup
-        if (isSelected) {
-          setTimeout(() => {
-            marker.openPopup();
-          }, 100);
-        }
-      }
+      if (vehicle.latitude == null || vehicle.longitude == null) return;
+      const point: [number, number] = [vehicle.longitude, vehicle.latitude];
+      vehiclePoints.push(point);
+      bounds.extend(point);
+      const color = vehicle.status === "on_trip"
+        ? "#2563eb"
+        : vehicle.status === "available"
+          ? "#10b981"
+          : vehicle.status === "maintenance"
+            ? "#f59e0b"
+            : "#64748b";
+      const marker = new mapboxgl.Marker({
+        element: markerElement(vehicle.vehicle_number, color, selectedVehicleId === vehicle.vehicle_id),
+        anchor: "bottom",
+      })
+        .setLngLat(point)
+        .setPopup(new mapboxgl.Popup({ offset: 28 }).setHTML(
+          `<strong>${vehicle.vehicle_number}</strong><br/>Status: ${vehicle.status.replace("_", " ")}<br/>${vehicle.trip_id ? `Trip #${vehicle.trip_id}` : "No active trip"}`
+        ))
+        .addTo(map);
+      marker.getElement().addEventListener("click", () => onSelectVehicle(vehicle.vehicle_id));
+      vehicleMarkersRef.current.push(marker);
     });
 
-    // --- RENDER SELECTED TRIP TRAIL ---
-    if (plannedRoute?.coordinates?.length) {
-      const routeCoords = plannedRoute.coordinates.map(
-        ([lng, lat]) => [lat, lng] as [number, number]
-      );
-      routeGroup.addLayer(L.polyline(routeCoords, {
-        color: "#0ea5e9",
-        weight: 5,
-        opacity: 0.65,
-        dashArray: "10, 10",
-        lineJoin: "round",
-      }));
-      bounds.push(...routeCoords);
-    }
+    const trailCoordinates = (trail || [])
+      .map((point) => [point.lng, point.lat] as [number, number])
+      .reverse();
+    const routeCoordinates = plannedRoute?.coordinates || [];
 
-    // --- RENDER SELECTED TRIP TRAIL ---
-    if (trail && trail.length > 0) {
-      const trailCoords = trail
-        .map((t) => [t.lat, t.lng] as [number, number])
-        .reverse(); // backend orders logs desc, we need asc for drawing line sequential
-
-      // Draw Indigo Polyline
-      const polyline = L.polyline(trailCoords, {
-        color: "#4f46e5",
-        weight: 5,
-        opacity: 0.8,
-        lineJoin: "round",
-        dashArray: "8, 12",
-      });
-
-      trailGroup.addLayer(polyline);
-
-      // Draw Start / End / Current Position Markers on the Trail
-      if (trailCoords.length > 0) {
-        // Start position
-        const startIcon = L.divIcon({
-          html: `<div class="w-3.5 h-3.5 rounded-full bg-indigo-500 border-2 border-white shadow-md"></div>`,
-          className: "trail-start-marker",
-          iconSize: [14, 14],
-          iconAnchor: [7, 7],
-        });
-        trailGroup.addLayer(L.marker(trailCoords[0], { icon: startIcon }));
-
-        // Current/Latest Position (if not matching vehicle position directly)
-        const currentIcon = L.divIcon({
-          html: `
-            <div class="relative flex items-center justify-center">
-              <span class="absolute inline-flex h-6 w-6 rounded-full bg-indigo-400 opacity-60 animate-ping"></span>
-              <div class="w-4 h-4 rounded-full bg-indigo-600 border-2 border-white shadow-lg z-10"></div>
-            </div>
-          `,
-          className: "trail-current-marker",
-          iconSize: [24, 24],
-          iconAnchor: [12, 12],
-        });
-        trailGroup.addLayer(L.marker(trailCoords[trailCoords.length - 1], { icon: currentIcon }));
+    const updateLine = (sourceId: string, layerId: string, coordinates: number[][], color: string, dasharray?: number[]) => {
+      const data = {
+        type: "Feature",
+        properties: {},
+        geometry: { type: "LineString", coordinates },
+      } as any;
+      const source = map.getSource(sourceId) as mapboxgl.GeoJSONSource | undefined;
+      if (source) source.setData(data);
+      else {
+        map.addSource(sourceId, { type: "geojson", data });
+        map.addLayer({ id: layerId, type: "line", source: sourceId, paint: {
+          "line-color": color,
+          "line-width": 5,
+          "line-opacity": 0.8,
+          ...(dasharray ? { "line-dasharray": dasharray } : {}),
+        }});
       }
+    };
 
-      // Fit map view bounds around the trail polyline
-      const trailBounds = L.latLngBounds(trailCoords);
-      map.fitBounds(trailBounds, { padding: [40, 40] });
-    } else if (selectedVehicleId) {
-      // If a vehicle is selected but has no trail, center map on that vehicle
-      const focusedVehicle = positions.find((v) => v.vehicle_id === selectedVehicleId);
-      if (
-        focusedVehicle &&
-        focusedVehicle.latitude !== null &&
-        focusedVehicle.latitude !== undefined &&
-        focusedVehicle.longitude !== null &&
-        focusedVehicle.longitude !== undefined
-      ) {
-        map.setView([focusedVehicle.latitude, focusedVehicle.longitude], 15);
+    updateLine("admin-trail", "admin-trail-line", trailCoordinates, "#4f46e5", [1, 1.5]);
+    updateLine("admin-route", "admin-route-line", routeCoordinates, "#0ea5e9", [2, 1]);
+    trailCoordinates.forEach((point) => bounds.extend(point));
+    routeCoordinates.forEach((point) => bounds.extend(point as [number, number]));
+
+    const viewportKey = selectedVehicleId
+      ? `${selectedVehicleId}:${trail?.length || 0}:${routeCoordinates.length}:${positions.find((v) => v.vehicle_id === selectedVehicleId)?.latitude || ""}`
+      : `all:${hotels.map((hotel) => hotel.id).join(",")}:${positions.map((vehicle) => vehicle.vehicle_id).join(",")}`;
+    if (!bounds.isEmpty() && lastViewportKeyRef.current !== viewportKey) {
+      lastViewportKeyRef.current = viewportKey;
+      if (selectedVehicleId && vehiclePoints.length === 1 && !trailCoordinates.length && !routeCoordinates.length) {
+        map.flyTo({ center: vehiclePoints[0], zoom: 14, essential: true });
+      } else {
+        map.fitBounds(bounds, { padding: 50, maxZoom: 14, duration: 0 });
       }
-    } else if (bounds.length > 0) {
-      // If nothing is selected, fit map bounds to show all markers
-      map.fitBounds(L.latLngBounds(bounds), { padding: [50, 50] });
     }
-  }, [positions, hotels, selectedVehicleId, trail, plannedRoute]);
+  }, [positions, hotels, selectedVehicleId, trail, plannedRoute, mapReady, onSelectVehicle]);
 
-  return (
-    <div
-      ref={mapContainerRef}
-      className="h-[550px] w-full rounded-2xl overflow-hidden shadow-inner border border-gray-150 z-10"
-      style={{ minHeight: "550px" }}
-    />
-  );
+  if (!token) {
+    return <div className="h-[550px] flex items-center justify-center rounded-2xl border border-amber-200 bg-amber-50 p-6 text-center text-xs font-semibold text-amber-800">Mapbox is not configured. Set NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN and restart the admin dashboard.</div>;
+  }
+
+  return <div ref={containerRef} className="h-[550px] w-full overflow-hidden rounded-2xl border border-gray-150 shadow-inner" />;
 }

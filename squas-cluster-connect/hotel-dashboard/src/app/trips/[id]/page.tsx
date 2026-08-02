@@ -4,10 +4,11 @@ import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { api } from "../../../lib/api";
-import { Trip, Payment } from "../../../lib/types";
+import { Trip, Payment, NavigationRoute } from "../../../lib/types";
 import ProtectedRoute from "../../../components/ProtectedRoute";
 import AppShell from "../../../components/AppShell";
 import StatusBadge from "../../../components/StatusBadge";
+import TripProgressMap from "../../../components/TripProgressMap";
 import { ArrowLeft, RefreshCw, AlertCircle, MapPin, Truck, Check, HelpCircle, AlertTriangle, Clock } from "lucide-react";
 
 export default function TripDetailPage() {
@@ -17,6 +18,7 @@ export default function TripDetailPage() {
 
   const [trip, setTrip] = useState<Trip | null>(null);
   const [trail, setTrail] = useState<{ lat: number; lng: number; speed?: number | null; status: string; ts: string }[]>([]);
+  const [route, setRoute] = useState<NavigationRoute | null>(null);
   const [quantity, setQuantity] = useState<any | null>(null);
   const [payment, setPayment] = useState<Payment | null>(null);
 
@@ -40,8 +42,20 @@ export default function TripDetailPage() {
       try {
         const trailData = await api.getTripTrail(tripId);
         setTrail(trailData);
+        if (trailData.length > 0 && !["closed", "cancelled"].includes(tripData.status)) {
+          try {
+            const routeData = await api.getNavigationRoute(tripId, trailData[0].lat, trailData[0].lng);
+            setRoute(routeData);
+          } catch (routeErr) {
+            console.warn("Failed to load driver directions:", routeErr);
+            setRoute(null);
+          }
+        } else {
+          setRoute(null);
+        }
       } catch (err) {
         console.error("Failed to load trail:", err);
+        setRoute(null);
       }
 
       // Fetch quantity (safely catch if none exists yet)
@@ -206,6 +220,32 @@ export default function TripDetailPage() {
                         </p>
                       </div>
                     </div>
+                  </div>
+
+                  {/* Live driver progress map */}
+                  <div className="bg-white border border-gray-150 rounded-2xl p-6 shadow-sm space-y-4">
+                    <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+                      <div>
+                        <h4 className="text-sm font-bold text-slate-800">Driver Progress</h4>
+                        <p className="mt-1 text-[10px] font-medium text-gray-400">
+                          The blue marker shows the driver&apos;s latest GPS position. Updates every 15 seconds while active.
+                        </p>
+                      </div>
+                      {trail.length > 0 && (
+                        <span className="rounded bg-indigo-50 px-2 py-1 font-mono text-[10px] font-bold text-indigo-700">
+                          Last update: {new Date(trail[0].ts).toLocaleTimeString()}
+                        </span>
+                      )}
+                    </div>
+                    <TripProgressMap
+                      trail={trail}
+                      route={route}
+                      destination={trip.request?.hotel ? {
+                        name: trip.request.hotel.hotel_name,
+                        latitude: trip.request.hotel.latitude,
+                        longitude: trip.request.hotel.longitude,
+                      } : null}
+                    />
                   </div>
 
                   {/* Complete Operational Timeline */}

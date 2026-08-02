@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { api } from "../lib/api";
@@ -14,6 +14,8 @@ import {
   MapPin,
   LogOut,
   Droplet,
+  Menu,
+  X,
 } from "lucide-react";
 
 interface AppShellProps {
@@ -23,6 +25,11 @@ interface AppShellProps {
 export default function AppShell({ children }: AppShellProps) {
   const pathname = usePathname();
   const router = useRouter();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  useEffect(() => {
+    setSidebarOpen(false);
+  }, [pathname]);
 
   const handleLogout = () => {
     api.logout();
@@ -42,12 +49,26 @@ export default function AppShell({ children }: AppShellProps) {
   return (
     <div className="min-h-screen flex bg-gray-50 text-gray-900 font-sans">
       {/* Sidebar */}
-      <aside className="w-64 bg-slate-900 text-white flex flex-col fixed inset-y-0 left-0 z-30 shadow-xl border-r border-slate-800">
+      {sidebarOpen && (
+        <button
+          aria-label="Close navigation"
+          className="fixed inset-0 z-30 bg-slate-950/50 lg:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+      <aside className={`w-64 bg-slate-900 text-white flex flex-col fixed inset-y-0 left-0 z-40 shadow-xl border-r border-slate-800 transition-transform duration-200 lg:translate-x-0 ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}`}>
         {/* Brand Logo */}
         <div className="h-16 flex items-center px-6 border-b border-slate-850 gap-2.5 bg-slate-950">
           <div className="p-1.5 rounded-lg bg-indigo-650 text-white shadow-md">
             <Droplet className="h-6 w-6 text-indigo-400" />
           </div>
+          <button
+            aria-label="Close navigation"
+            onClick={() => setSidebarOpen(false)}
+            className="ml-auto p-1 text-slate-400 hover:text-white lg:hidden"
+          >
+            <X className="h-5 w-5" />
+          </button>
           <div>
             <h1 className="text-md font-bold tracking-tight text-white leading-none">Squas Connect</h1>
             <span className="text-[10px] text-slate-400 font-semibold tracking-wider uppercase">Control Room</span>
@@ -98,10 +119,17 @@ export default function AppShell({ children }: AppShellProps) {
       </aside>
 
       {/* Main Content Area */}
-      <div className="flex-1 pl-64 flex flex-col min-h-screen">
+      <div className="flex-1 lg:pl-64 flex flex-col min-h-screen">
         {/* Top Navbar */}
-        <header className="h-16 bg-white border-b border-gray-150 flex items-center justify-between px-8 sticky top-0 z-20 shadow-sm">
+        <header className="h-16 bg-white border-b border-gray-150 flex items-center justify-between px-4 sm:px-8 sticky top-0 z-20 shadow-sm">
           <div className="flex items-center gap-4">
+            <button
+              aria-label="Open navigation"
+              onClick={() => setSidebarOpen(true)}
+              className="p-2 -ml-2 text-gray-500 hover:text-slate-900 lg:hidden"
+            >
+              <Menu className="h-5 w-5" />
+            </button>
             <h2 className="text-lg font-bold text-gray-800">
               {navItems.find((item) => pathname.startsWith(item.href))?.name || "System"}
             </h2>
