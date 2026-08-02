@@ -20,15 +20,15 @@ export default function DataTable<T>({
   emptyMessage = "No data available",
 }: DataTableProps<T>) {
   return (
-    <div className="overflow-x-auto border border-gray-200 rounded-lg shadow-sm bg-white">
-      <table className="min-w-full divide-y divide-gray-200">
-        <thead className="bg-gray-50">
+    <div className="overflow-x-auto border border-gray-150 rounded-xl bg-white shadow-sm">
+      <table className="min-w-full divide-y divide-slate-200">
+        <thead className="bg-slate-50/80">
           <tr>
             {columns.map((col, idx) => (
               <th
                 key={idx}
                 scope="col"
-                className={`px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider ${
+                className={`px-5 py-3 text-left text-[10px] font-bold text-slate-500 uppercase tracking-wider ${
                   col.className || ""
                 }`}
               >
@@ -37,19 +37,19 @@ export default function DataTable<T>({
             ))}
           </tr>
         </thead>
-        <tbody className="divide-y divide-gray-200 bg-white">
+        <tbody className="divide-y divide-slate-100 bg-white">
           {data.length === 0 ? (
             <tr>
               <td
                 colSpan={columns.length}
-                className="px-6 py-10 text-center text-sm text-gray-500 italic"
+                className="px-5 py-10 text-center text-sm text-slate-500"
               >
                 {emptyMessage}
               </td>
             </tr>
           ) : (
             data.map((item) => (
-              <tr key={keyExtractor(item)} className="hover:bg-gray-50 transition-colors">
+              <tr key={keyExtractor(item)} className="hover:bg-slate-50/70 transition-colors">
                 {columns.map((col, colIdx) => {
                   let content: React.ReactNode = "";
                   if (col.accessor) {
@@ -63,7 +63,7 @@ export default function DataTable<T>({
                   return (
                     <td
                       key={colIdx}
-                      className={`px-6 py-4 whitespace-nowrap text-sm text-gray-900 ${
+                      className={`px-5 py-3.5 whitespace-nowrap text-sm text-slate-700 ${
                         col.className || ""
                       }`}
                     >

@@ -1,3 +1,59 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: light;
+    --dashboard-ink: #172033;
+    --dashboard-muted: #64748b;
+    --dashboard-border: #e2e8f0;
+    --dashboard-accent: #4f46e5;
+  }
+
+  html {
+    font-family: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+    font-feature-settings: "cv11", "ss01";
+  }
+
+  body {
+    color: var(--dashboard-ink);
+    background: #f8fafc;
+    letter-spacing: -0.005em;
+  }
+
+  button, input, select, textarea {
+    font: inherit;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    letter-spacing: -0.02em;
+  }
+}
+
+@layer components {
+  .dashboard-card {
+    @apply border border-gray-150 bg-white shadow-sm;
+    border-radius: 0.75rem;
+  }
+
+  .dashboard-control {
+    @apply border border-slate-200 bg-white text-slate-700 outline-none transition-colors;
+    border-radius: 0.5rem;
+  }
+
+  .dashboard-control:focus {
+    border-color: var(--dashboard-accent);
+    box-shadow: 0 0 0 3px rgb(79 70 229 / 0.12);
+  }
+}
+
+/* Keep the existing page markup visually consistent while individual screens
+   migrate to the shared dashboard primitives. */
+@layer utilities {
+  .rounded-xl { border-radius: 0.625rem !important; }
+  .rounded-2xl { border-radius: 0.75rem !important; }
+  .shadow-sm { box-shadow: 0 1px 2px rgb(15 23 42 / 0.05) !important; }
+  .shadow-md { box-shadow: 0 4px 12px rgb(15 23 42 / 0.08) !important; }
+  .font-black { font-weight: 750 !important; }
+}
