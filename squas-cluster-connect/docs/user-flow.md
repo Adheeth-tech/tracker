@@ -3,6 +3,9 @@
 This document describes the current web workflow for hotel users, drivers, and
 administrators.
 
+The visual versions of these workflows are maintained in
+[`docs/diagrams.md`](diagrams.md).
+
 ## 1. Hotel registration and pickup
 
 1. A hotel opens the hotel dashboard registration page.

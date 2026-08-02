@@ -8,27 +8,9 @@ in the physical process (a tanker starting, arriving, collecting, unloading) is
 mirrored by a validated state transition in the backend, which is what makes the
 whole operation auditable "from hotel request to treatment-centre receipt".
 
-```
-┌────────────────┐   ┌────────────────┐   ┌────────────────────┐
-│  Hotel app     │   │  Driver app    │   │  Admin dashboard   │
-│  (Flutter/RN)  │   │  (Flutter/RN)  │   │  (Next.js/React)   │
-└───────┬────────┘   └───────┬────────┘   └─────────┬──────────┘
-        │  HTTPS + Bearer JWT (OTP login)           │
-        └───────────────────┬───────────────────────┘
-                            ▼
-              ┌──────────────────────────────┐
-              │        FastAPI backend        │
-              │  routers → services → models  │
-              │  ┌────────────────────────┐   │
-              │  │  Trip workflow engine   │  │  ← single source of truth for
-              │  └────────────────────────┘   │    trip/request state
-              └───────────────┬───────────────┘
-                              ▼
-                     ┌─────────────────┐   ┌──────────────┐
-                     │   PostgreSQL     │   │  S3 / GCS     │ (proof photos)
-                     └─────────────────┘   └──────────────┘
-        External: Google Maps/Mapbox · FCM/SMS/WhatsApp · UPI gateway
-```
+See the Mermaid visual index in [`docs/diagrams.md`](diagrams.md) for the
+system architecture, pickup sequence, role responsibilities, state machine,
+live-location flow, and separate deployment boundaries.
 
 ## Layering
 
