@@ -20,7 +20,7 @@ export default function DataTable<T>({
   emptyMessage = "No data available",
 }: DataTableProps<T>) {
   return (
-    <div className="overflow-x-auto border border-gray-150 rounded-xl bg-white shadow-sm">
+    <div className="overflow-x-auto border border-slate-200 rounded-lg bg-white">
       <table className="min-w-full divide-y divide-slate-200">
         <thead className="bg-slate-50/80">
           <tr>
@@ -28,7 +28,7 @@ export default function DataTable<T>({
               <th
                 key={idx}
                 scope="col"
-                className={`px-5 py-3 text-left text-[10px] font-bold text-slate-500 uppercase tracking-wider ${
+                className={`px-5 py-3 text-left text-xs font-semibold text-slate-500 ${
                   col.className || ""
                 }`}
               >
@@ -49,7 +49,7 @@ export default function DataTable<T>({
             </tr>
           ) : (
             data.map((item) => (
-              <tr key={keyExtractor(item)} className="hover:bg-slate-50/70 transition-colors">
+              <tr key={keyExtractor(item)} className="hover:bg-slate-50 transition-colors">
                 {columns.map((col, colIdx) => {
                   let content: React.ReactNode = "";
                   if (col.accessor) {

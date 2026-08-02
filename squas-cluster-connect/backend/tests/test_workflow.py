@@ -93,8 +93,26 @@ def test_full_workflow():
     assert r.status_code == 200, r.text
     assert r.json()["accepted_at"] is not None
 
-    # 4. Driver walks the trip through the full status chain with GPS.
-    for i, target in enumerate(TRIP_CHAIN):
+    # 4. Driver walks the trip through collection with GPS.
+    for i, target in enumerate(TRIP_CHAIN[:4]):
+        r = client.post(f"/api/v1/trips/{trip_id}/advance", headers=hdr(driver), json={
+            "target": target.value,
+            "location": {"latitude": 10.53 + i * 0.001, "longitude": 76.21 + i * 0.001},
+        })
+        assert r.status_code == 200, f"{target}: {r.text}"
+        assert r.json()["status"] == target.value
+
+    # 5. Driver records collected quantity during collection.
+    r = client.post(f"/api/v1/trips/{trip_id}/quantity", headers=hdr(driver), json={
+        "collected_litres": 1080, "source": "flowmeter",
+        "proof_photo_url": "https://storage.example/proof/1.jpg",
+    })
+    assert r.status_code == 200, r.text
+    assert r.json()["collected_litres"] == 1080
+    assert r.json()["variance_litres"] == 80
+
+    # Continue the trip to its terminal state.
+    for i, target in enumerate(TRIP_CHAIN[4:], start=4):
         r = client.post(f"/api/v1/trips/{trip_id}/advance", headers=hdr(driver), json={
             "target": target.value,
             "location": {"latitude": 10.53 + i * 0.001, "longitude": 76.21 + i * 0.001},
@@ -105,15 +123,9 @@ def test_full_workflow():
     # Invalid transition is rejected (already CLOSED).
     assert client.post(f"/api/v1/trips/{trip_id}/advance", headers=hdr(driver),
                        json={"target": "driver_started"}).status_code == 409
-
-    # 5. Driver records collected quantity (auto-prices the trip).
-    r = client.post(f"/api/v1/trips/{trip_id}/quantity", headers=hdr(driver), json={
-        "collected_litres": 1080, "source": "flowmeter",
-        "proof_photo_url": "https://storage.example/proof/1.jpg",
-    })
-    assert r.status_code == 200, r.text
-    assert r.json()["collected_litres"] == 1080
-    assert r.json()["variance_litres"] == 80  # 1080 collected - 1000 estimated
+    assert client.post(f"/api/v1/trips/{trip_id}/quantity", headers=hdr(driver), json={
+        "collected_litres": 1100,
+    }).status_code == 409
 
     # Payment was auto-created; mark it paid via UPI.
     r = client.post(f"/api/v1/payments/trip/{trip_id}", headers=hdr(admin), json={

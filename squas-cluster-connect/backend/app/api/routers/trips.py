@@ -191,7 +191,50 @@ def record_quantity(
 
     if user.role == Role.DRIVER and trip.driver_id != user.driver_id:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Not your trip")
+    if user.role == Role.HOTEL and (not trip.request or trip.request.hotel_id != user.hotel_id):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Not your trip")
     ensure_active_driver(user)
+
+    # Existing clients use this endpoint to read an optional record. Keep that
+    # compatibility path read-only so it cannot create or mutate data.
+    is_read_request = all(value is None for value in (
+        payload.driver_entered_litres,
+        payload.hotel_confirmed_litres,
+        payload.collected_litres,
+        payload.proof_photo_url,
+        payload.variance_remarks,
+    ))
+    if is_read_request:
+        if trip.quantity is None:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "No quantity record")
+        return trip.quantity
+
+    driver_fields = (
+        payload.driver_entered_litres is not None
+        or payload.collected_litres is not None
+        or payload.proof_photo_url is not None
+    )
+    if user.role == Role.DRIVER:
+        if trip.status not in {TripStatus.COLLECTION_STARTED, TripStatus.COLLECTION_COMPLETED}:
+            raise HTTPException(
+                status.HTTP_409_CONFLICT,
+                "Driver quantity logs are only editable during collection",
+            )
+        if payload.hotel_confirmed_litres is not None:
+            raise HTTPException(status.HTTP_403_FORBIDDEN, "Drivers cannot confirm hotel quantity")
+    elif user.role == Role.HOTEL:
+        if trip.status not in {
+            TripStatus.COLLECTION_COMPLETED,
+            TripStatus.MOVING_TO_PLANT,
+            TripStatus.REACHED_PLANT,
+            TripStatus.UNLOADED,
+        }:
+            raise HTTPException(
+                status.HTTP_409_CONFLICT,
+                "Hotel quantity confirmation is not available at this stage",
+            )
+        if driver_fields:
+            raise HTTPException(status.HTTP_403_FORBIDDEN, "Hotels can only confirm received quantity")
 
     rec = trip.quantity or QuantityRecord(trip_id=trip.id)
     if rec.estimated_litres is None and trip.request:
@@ -201,7 +244,7 @@ def record_quantity(
         rec.driver_entered_litres = payload.driver_entered_litres
     if payload.hotel_confirmed_litres is not None:
         rec.hotel_confirmed_litres = payload.hotel_confirmed_litres
-    if payload.source is not None:
+    if payload.source is not None and user.role != Role.HOTEL:
         rec.source = payload.source
     if payload.proof_photo_url is not None:
         rec.proof_photo_url = payload.proof_photo_url

@@ -33,8 +33,8 @@
 
 @layer components {
   .dashboard-card {
-    @apply border border-gray-150 bg-white shadow-sm;
-    border-radius: 0.75rem;
+    @apply border border-slate-200 bg-white;
+    border-radius: 0.625rem;
   }
 
   .dashboard-control {
@@ -51,9 +51,10 @@
 /* Keep the existing page markup visually consistent while individual screens
    migrate to the shared dashboard primitives. */
 @layer utilities {
-  .rounded-xl { border-radius: 0.625rem !important; }
-  .rounded-2xl { border-radius: 0.75rem !important; }
-  .shadow-sm { box-shadow: 0 1px 2px rgb(15 23 42 / 0.05) !important; }
-  .shadow-md { box-shadow: 0 4px 12px rgb(15 23 42 / 0.08) !important; }
+  .rounded-xl { border-radius: 0.5rem !important; }
+  .rounded-2xl { border-radius: 0.625rem !important; }
+  .shadow-sm { box-shadow: 0 1px 2px rgb(15 23 42 / 0.04) !important; }
+  .shadow-md { box-shadow: 0 3px 8px rgb(15 23 42 / 0.06) !important; }
+  .shadow-xl, .shadow-2xl { box-shadow: 0 8px 24px rgb(15 23 42 / 0.12) !important; }
   .font-black { font-weight: 750 !important; }
 }

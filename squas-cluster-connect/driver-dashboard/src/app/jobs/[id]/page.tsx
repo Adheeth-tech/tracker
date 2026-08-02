@@ -336,7 +336,7 @@ export default function JobDetailPage() {
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
                 
                 {/* Left Area (2/3 width) - Job Details and Telemetry Advancements */}
-                <div className="lg:col-span-2 space-y-6">
+                <div className="min-w-0 lg:col-span-2 space-y-6">
                   
                   {/* Job Details Card */}
                   <div className="bg-white border border-gray-150 rounded-2xl p-6 shadow-sm space-y-5">
@@ -639,7 +639,7 @@ export default function JobDetailPage() {
                     )}
 
                     {/* Show Form only when trip is in collection stages */}
-                    {["collection_started", "collection_completed", "moving_to_plant", "reached_plant", "unloaded", "closed"].includes(trip.status) ? (
+                    {["collection_started", "collection_completed"].includes(trip.status) ? (
                       <form onSubmit={handleRecordQuantity} className="space-y-4 text-xs font-semibold">
                         <div>
                           <label className="block text-[9px] text-gray-400 font-bold uppercase tracking-wider mb-1">

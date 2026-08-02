@@ -143,10 +143,11 @@ export default function TripDetailPage() {
   };
 
   // Determine if quantity confirmation form should be shown.
-  // Allowed when status is collection_started, collection_completed, or moving_to_plant.
+  // Hotel confirmation starts after collection is complete and remains
+  // available while the delivery is being received.
   const showConfirmForm =
     trip &&
-    ["collection_started", "collection_completed", "moving_to_plant"].includes(trip.status);
+    ["collection_completed", "moving_to_plant", "reached_plant", "unloaded"].includes(trip.status);
 
   return (
     <ProtectedRoute>
@@ -183,7 +184,7 @@ export default function TripDetailPage() {
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
                 
                 {/* Left Area (2/3 width) - Trip Profile and GPS breadcrumbs */}
-                <div className="lg:col-span-2 space-y-6">
+                <div className="min-w-0 lg:col-span-2 space-y-6">
                   
                   {/* Trip Card */}
                   <div className="bg-white border border-gray-150 rounded-2xl p-6 shadow-sm space-y-5">
@@ -290,7 +291,7 @@ export default function TripDetailPage() {
                                   <p className="text-[10px] text-indigo-600 font-bold mt-0.5">{node.extra}</p>
                                 )}
                               </div>
-                              <span className="font-mono text-[10px] text-slate-500 whitespace-nowrap">
+                              <span className="max-w-[45%] text-right font-mono text-[10px] text-slate-500 whitespace-normal break-words">
                                 {node.ts ? new Date(node.ts).toLocaleString() : "Pending"}
                               </span>
                             </div>

@@ -56,10 +56,10 @@ export default function AppShell({ children }: AppShellProps) {
           onClick={() => setSidebarOpen(false)}
         />
       )}
-      <aside className={`w-64 bg-slate-900 text-white flex flex-col fixed inset-y-0 left-0 z-40 shadow-xl border-r border-slate-800 transition-transform duration-200 lg:translate-x-0 ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}`}>
+      <aside className={`w-64 bg-slate-950 text-white flex flex-col fixed inset-y-0 left-0 z-40 border-r border-slate-800 transition-transform duration-200 lg:translate-x-0 ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}`}>
         {/* Brand Logo */}
         <div className="h-16 flex items-center px-6 border-b border-slate-850 gap-2.5 bg-slate-950">
-          <div className="p-1.5 rounded-lg bg-indigo-650 text-white shadow-md">
+          <div className="p-1.5 rounded-md bg-indigo-600 text-white">
             <Droplet className="h-6 w-6 text-indigo-400" />
           </div>
           <button
@@ -71,7 +71,7 @@ export default function AppShell({ children }: AppShellProps) {
           </button>
           <div>
             <h1 className="text-md font-bold tracking-tight text-white leading-none">Squas Connect</h1>
-            <span className="text-[10px] text-slate-400 font-semibold tracking-wider uppercase">Control Room</span>
+            <span className="text-xs text-slate-400 font-medium">Operations</span>
           </div>
         </div>
 
@@ -84,9 +84,9 @@ export default function AppShell({ children }: AppShellProps) {
               <Link
                 key={item.name}
                 href={item.href}
-                className={`flex items-center gap-3 px-4 py-3 text-sm font-semibold rounded-xl transition-all duration-150 ${
+                className={`flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-md transition-colors ${
                   isActive
-                    ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/20"
+                    ? "bg-indigo-600 text-white"
                     : "text-slate-400 hover:bg-slate-800/60 hover:text-white"
                 }`}
               >
@@ -100,17 +100,17 @@ export default function AppShell({ children }: AppShellProps) {
         {/* Sidebar Footer / User Info */}
         <div className="p-4 border-t border-slate-850 bg-slate-950/40 flex flex-col gap-2">
           <div className="flex items-center gap-3 px-2">
-            <div className="h-8 w-8 rounded-full bg-slate-700 flex items-center justify-center font-bold text-slate-200">
+            <div className="h-8 w-8 rounded-md bg-slate-700 flex items-center justify-center font-bold text-slate-200">
               A
             </div>
             <div className="overflow-hidden">
               <p className="text-xs font-bold text-slate-200 truncate">Administrator</p>
-              <p className="text-[10px] text-slate-400 truncate">System Operator</p>
+              <p className="text-xs text-slate-400 truncate">Administrator</p>
             </div>
           </div>
           <button
             onClick={handleLogout}
-            className="mt-2 w-full flex items-center justify-center gap-2 px-3 py-2 text-xs font-bold text-red-400 hover:text-white hover:bg-red-900/40 border border-red-900/30 rounded-lg transition-colors cursor-pointer"
+            className="mt-2 w-full flex items-center justify-center gap-2 px-3 py-2 text-xs font-semibold text-red-300 hover:text-white hover:bg-red-900/40 border border-red-900/30 rounded-md transition-colors cursor-pointer"
           >
             <LogOut className="h-3.5 w-3.5" />
             Logout
@@ -121,7 +121,7 @@ export default function AppShell({ children }: AppShellProps) {
       {/* Main Content Area */}
       <div className="flex-1 lg:pl-64 flex flex-col min-h-screen">
         {/* Top Navbar */}
-        <header className="h-16 bg-white border-b border-gray-150 flex items-center justify-between px-4 sm:px-8 sticky top-0 z-20 shadow-sm">
+        <header className="h-14 bg-white border-b border-slate-200 flex items-center justify-between px-4 sm:px-8 sticky top-0 z-20">
           <div className="flex items-center gap-4">
             <button
               aria-label="Open navigation"
@@ -130,18 +130,18 @@ export default function AppShell({ children }: AppShellProps) {
             >
               <Menu className="h-5 w-5" />
             </button>
-            <h2 className="text-lg font-bold text-gray-800">
+            <h2 className="text-base font-semibold text-slate-800">
               {navItems.find((item) => pathname.startsWith(item.href))?.name || "System"}
             </h2>
           </div>
           <div className="flex items-center gap-3">
-            <span className="h-2 w-2 rounded-full bg-green-500 animate-pulse"></span>
-            <span className="text-xs font-semibold text-gray-500">API Live Connection</span>
+            <span className="h-2 w-2 rounded-full bg-emerald-500"></span>
+            <span className="text-xs font-medium text-slate-500">Connected</span>
           </div>
         </header>
 
         {/* Content Container */}
-        <main className="flex-1 p-8 overflow-y-auto max-w-7xl w-full mx-auto">
+        <main className="flex-1 p-5 sm:p-6 overflow-y-auto max-w-7xl w-full mx-auto">
           {children}
         </main>
       </div>
