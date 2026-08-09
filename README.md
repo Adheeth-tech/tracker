@@ -21,6 +21,41 @@ squas-cluster-connect/
 └── docs/               # Architecture, data model, and API reference
 ```
 
+## 💻 Technical Specifications & Tech Stack
+
+This platform leverages a modern, robust, and type-safe stack designed for performance, rapid development, and offline-resilient operational workflows.
+
+### 🐍 Backend API (`/squas-cluster-connect/backend`)
+The backend is a robust REST API written in Python, adhering to clean architecture principles:
+*   **Framework**: **FastAPI** (`0.115.*`) for asynchronous request handling, auto-generated interactive OpenAPI/Swagger documentation, and performance.
+*   **ASGI Server**: **Uvicorn** (`>=0.30`) runs the high-performance local server.
+*   **Database & ORM**:
+    *   **SQLAlchemy** (`2.0.*`) as the Object-Relational Mapper (ORM) using a modular models approach.
+    *   **SQLite** (local SQLite database `squas.db`) with `sqlalchemy-sqlitecloud` (`>=0.1.0`) is configured for quick, zero-config local development and testing.
+    *   **PostgreSQL** (production deployment database) with the **psycopg2-binary** (`>=2.9`) driver.
+*   **Data Validation & Settings**: **Pydantic** (`2.*`) and **Pydantic Settings** (`>=2.0`) handle input validation and environment configuration parsing.
+*   **Security & JWT Auth**:
+    *   **python-jose[cryptography]** (`>=3.3`) for robust JWT generation and validation.
+    *   **passlib[bcrypt]** (`>=1.7`) for secure user credential/OTP management.
+    *   **python-multipart** (`>=0.0.9`) to handle multipart form data for driver uploads (e.g. proof images).
+
+### ⚛️ Frontend Web Dashboards (`admin-dashboard`, `hotel-dashboard`, `driver-dashboard`)
+All three dashboards are built using the same core web technology stack:
+*   **Framework**: **Next.js** (`^14.2.0`) with **React** (`^18.3.0`), providing optimized Server-Side Rendering (SSR) and Client-Side Routing.
+*   **Language**: **TypeScript** (`^5`) for strict compile-time type-safety across API requests and component interfaces.
+*   **Styling**: **Tailwind CSS** (`^3.4.19`) with **PostCSS** (`^8.5.19`) and **Autoprefixer** (`^10.5.2`) for a premium utility-first responsive layout.
+*   **Icons**: **Lucide React** (`^1.24.0`) is utilized for clean, unified SVG icons.
+*   **Geospatial & Mapping**:
+    *   **Leaflet** (`^1.9.4`) with `@types/leaflet` (`^1.9.21`) for general interactive maps.
+    *   **Mapbox GL** (`^3.27.0`) with `@types/mapbox-gl` (`^3.4.1`) for live geospatial tracking, route navigation, and telemetry visualization.
+*   **Typography**: Loaded locally/custom via `@fontsource/ibm-plex-sans` and `@fontsource/ibm-plex-mono`.
+
+### 📱 Mobile App (Proposed Scaffold `/mobile-app`)
+*   **Framework**: Suggested as a cross-platform mobile stack using **Flutter** or **React Native** (TypeScript).
+*   **Features**: Role-based routing (loaded post-OTP verification), background GPS polling, camera/gallery integration for receipt/proof uploads, and offline-safe HTTP queueing for pings.
+
+---
+
 ## ✨ Key Functionalities
 
 - **Role-Based Access Control (RBAC)**: Supports roles for Admins, Hotels, Drivers, and Treatment Centre Operators via OTP authentication.
